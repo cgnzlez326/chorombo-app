@@ -1,0 +1,962 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "API Cliente Feliz",
+        "description": "API RESTful para el sistema de seleccion de personal del Contact Center **Cliente Feliz**.\n\n- Autenticacion: **HTTP Basic** (`Authorization: Basic base64(email:contrasena)`). Usa el boton **Authorize** con las credenciales de un usuario (email:contrasena).\n- Control de acceso por perfil: `public` (sin auth), `any` (cualquier autenticado), `candidato` y `reclutador`. El rol permitido se indica en cada operacion.\n- Respuestas uniformes: `{ \"success\": true, \"data\": ... }` para exito y `{ \"success\": false, \"message\": \"...\", \"errors\": {...} }` para errores.\n- Todos los request body se envian como `application/json`.\n\nCredenciales semilla (base de datos recargada con `database.sql`):\n- Reclutador demo: `reclutador@clientefeliz.cl` / `reclutador123`\n- Candidato de prueba: registralo con `POST /usuarios` (`rol: candidato`).",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost/cliente-feliz/api"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Usuarios",
+            "description": "CRUD de usuarios (candidatos y reclutadores). Tabla unica: el campo `rol` distingue el perfil."
+        },
+        {
+            "name": "Ofertas",
+            "description": "CRUD de ofertas laborales. El DELETE es una baja logica (`activa = 0`), nunca borrado fisico."
+        },
+        {
+            "name": "Postulaciones",
+            "description": "Postulaciones de candidatos a ofertas, con historial de cambios de estado y comentarios."
+        },
+        {
+            "name": "Estados",
+            "description": "Catalogo de estados de postulacion."
+        }
+    ],
+    "security": [
+        {
+            "BasicAuth": []
+        }
+    ],
+    "paths": {
+        "/usuarios": {
+            "post": {
+                "tags": ["Usuarios"],
+                "summary": "Crear usuario (registro)",
+                "description": "Registro publico de un **candidato**. Para crear un **reclutador** se debe estar autenticado como reclutador (rol en el body = `reclutador`).",
+                "operationId": "crearUsuario",
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UsuarioInput"
+                            },
+                            "examples": {
+                                "candidato": {
+                                    "summary": "Registro publico (sin login)",
+                                    "value": {
+                                        "nombre": "Maria Garcia",
+                                        "email": "maria@correo.cl",
+                                        "contrasena": "clave12345",
+                                        "rol": "candidato"
+                                    }
+                                },
+                                "reclutador": {
+                                    "summary": "Requiere sesion de reclutador (401/403 sin ella)",
+                                    "value": {
+                                        "nombre": "Pedro Soto",
+                                        "email": "pedro@correo.cl",
+                                        "contrasena": "clave54321",
+                                        "rol": "reclutador"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Usuario creado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": { "type": "integer", "example": 2 },
+                                                "email": { "type": "string", "example": "maria@correo.cl" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "get": {
+                "tags": ["Usuarios"],
+                "summary": "Listar usuarios",
+                "description": "Rol requerido: **reclutador**. Devuelve todos los usuarios sin la contrasena.",
+                "operationId": "listarUsuarios",
+                "responses": {
+                    "200": {
+                        "description": "Lista de usuarios",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/Usuario" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            }
+        },
+        "/usuarios/{id}": {
+            "parameters": [
+                {
+                    "name": "id",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID del usuario",
+                    "schema": { "type": "integer" }
+                }
+            ],
+            "get": {
+                "tags": ["Usuarios"],
+                "summary": "Obtener un usuario",
+                "description": "Rol requerido: **any**. Un candidato solo puede obtener su propio perfil.",
+                "operationId": "obtenerUsuario",
+                "responses": {
+                    "200": {
+                        "description": "Datos del usuario",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": { "$ref": "#/components/schemas/Usuario" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "put": {
+                "tags": ["Usuarios"],
+                "summary": "Actualizar usuario",
+                "description": "Rol requerido: **any**. Actualizacion parcial (solo se envian los campos a cambiar). Un candidato solo puede actualizar su propio perfil y no puede escalar su rol a reclutador.",
+                "operationId": "actualizarUsuario",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UsuarioUpdate"
+                            },
+                            "example": {
+                                "nombre": "Maria Garcia Lopez",
+                                "contrasena": "nuevaClave99"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Usuario actualizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": { "type": "integer", "example": 2 },
+                                                "updated": { "type": "boolean", "example": true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Usuarios"],
+                "summary": "Eliminar usuario",
+                "description": "Rol requerido: **reclutador**. Falla con 409 si el usuario tiene registros asociados (ofertas o postulaciones).",
+                "operationId": "eliminarUsuario",
+                "responses": {
+                    "200": {
+                        "description": "Usuario eliminado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "deleted": { "type": "boolean", "example": true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    }
+                }
+            }
+        },
+        "/ofertas": {
+            "post": {
+                "tags": ["Ofertas"],
+                "summary": "Crear oferta laboral",
+                "description": "Rol requerido: **reclutador**. El `reclutador_id` se toma del usuario autenticado (nunca del body).",
+                "operationId": "crearOferta",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OfertaInput"
+                            },
+                            "example": {
+                                "titulo": "Agente de Atencion Telefonica",
+                                "descripcion": "Atencion a clientes en campana de servicio.",
+                                "requisitos": "Excelente redaccion, disponibilidad inmediata.",
+                                "salario": 650000,
+                                "fecha_cierre": "2026-09-30"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Oferta creada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": { "type": "integer", "example": 3 }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "get": {
+                "tags": ["Ofertas"],
+                "summary": "Listar ofertas",
+                "description": "Rol requerido: **any**. El perfil **candidato** siempre ve solo ofertas activas y vigentes. El **reclutador** puede filtrar por activas con el query `activas=true`.",
+                "operationId": "listarOfertas",
+                "parameters": [
+                    {
+                        "name": "activas",
+                        "in": "query",
+                        "required": false,
+                        "description": "Si es `true`, devuelve solo ofertas activas (`activa = 1` y no vencidas). Util para el reclutador.",
+                        "schema": { "type": "boolean" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de ofertas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/Oferta" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/ofertas/{id}": {
+            "parameters": [
+                {
+                    "name": "id",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID de la oferta",
+                    "schema": { "type": "integer" }
+                }
+            ],
+            "get": {
+                "tags": ["Ofertas"],
+                "summary": "Obtener una oferta",
+                "description": "Rol requerido: **any**. Un candidato recibe 404 si la oferta no esta activa.",
+                "operationId": "obtenerOferta",
+                "responses": {
+                    "200": {
+                        "description": "Datos de la oferta",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": { "$ref": "#/components/schemas/Oferta" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "put": {
+                "tags": ["Ofertas"],
+                "summary": "Actualizar oferta",
+                "description": "Rol requerido: **reclutador**. Actualizacion parcial (solo se envian los campos a cambiar). Campos permitidos: `titulo`, `descripcion`, `requisitos`, `salario`, `fecha_cierre`, `activa`.",
+                "operationId": "actualizarOferta",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OfertaUpdate"
+                            },
+                            "example": {
+                                "titulo": "Agente de Atencion Telefonica (Remoto)",
+                                "salario": 700000
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Oferta actualizada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": { "type": "integer", "example": 3 },
+                                                "updated": { "type": "boolean", "example": true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Ofertas"],
+                "summary": "Desactivar oferta (baja logica)",
+                "description": "Rol requerido: **reclutador**. Marca `activa = 0`; el registro no se elimina fisicamente.",
+                "operationId": "desactivarOferta",
+                "responses": {
+                    "200": {
+                        "description": "Oferta desactivada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": { "type": "integer", "example": 3 },
+                                                "deactivated": { "type": "boolean", "example": true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/postulaciones": {
+            "post": {
+                "tags": ["Postulaciones"],
+                "summary": "Crear postulacion",
+                "description": "Rol requerido: **candidato**. El candidato se postula a una oferta (estado inicial: `Postulando`). El `candidato_id` se toma del usuario autenticado.",
+                "operationId": "crearPostulacion",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PostulacionInput"
+                            },
+                            "example": {
+                                "oferta_id": 3
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Postulacion creada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": { "type": "integer", "example": 5 },
+                                                "estado": { "type": "string", "example": "Postulando" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "get": {
+                "tags": ["Postulaciones"],
+                "summary": "Listar postulaciones",
+                "description": "Rol requerido: **any**. El perfil **candidato** ve solo sus propias postulaciones. El **reclutador** puede filtrar por oferta con el query `oferta_id`.",
+                "operationId": "listarPostulaciones",
+                "parameters": [
+                    {
+                        "name": "oferta_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filtra postulaciones de una oferta especifica (perfil reclutador).",
+                        "schema": { "type": "integer" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de postulaciones",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/Postulacion" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/postulaciones/{id}": {
+            "parameters": [
+                {
+                    "name": "id",
+                    "in": "path",
+                    "required": true,
+                    "description": "ID de la postulacion",
+                    "schema": { "type": "integer" }
+                }
+            ],
+            "get": {
+                "tags": ["Postulaciones"],
+                "summary": "Obtener postulacion con historial",
+                "description": "Rol requerido: **any**. Devuelve la postulacion con su estado actual y el historial de cambios/comentarios. Un candidato solo puede ver sus propias postulaciones.",
+                "operationId": "obtenerPostulacion",
+                "responses": {
+                    "200": {
+                        "description": "Postulacion y su historial",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "postulacion": { "$ref": "#/components/schemas/Postulacion" },
+                                                "historial": {
+                                                    "type": "array",
+                                                    "items": { "$ref": "#/components/schemas/HistorialItem" }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "put": {
+                "tags": ["Postulaciones"],
+                "summary": "Cambiar estado de postulacion",
+                "description": "Rol requerido: **reclutador**. Actualiza el estado y registra (en transaccion) un nuevo registro de historial con el comentario.",
+                "operationId": "cambiarEstadoPostulacion",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PostulacionUpdate"
+                            },
+                            "example": {
+                                "estado_id": 2,
+                                "comentario": "Perfil en revision, agendada entrevista."
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Estado actualizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": { "type": "integer", "example": 5 },
+                                                "estado_actualizado": { "type": "boolean", "example": true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Postulaciones"],
+                "summary": "Eliminar postulacion",
+                "description": "Rol requerido: **reclutador**. Elimina fisicamente la postulacion y su historial (FK con `ON DELETE CASCADE`).",
+                "operationId": "eliminarPostulacion",
+                "responses": {
+                    "200": {
+                        "description": "Postulacion eliminada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "deleted": { "type": "boolean", "example": true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/estados": {
+            "get": {
+                "tags": ["Estados"],
+                "summary": "Listar estados de postulacion",
+                "description": "Rol requerido: **any**. Catalogo de estados disponibles para una postulacion.",
+                "operationId": "listarEstados",
+                "responses": {
+                    "200": {
+                        "description": "Lista de estados",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success", "data"],
+                                    "properties": {
+                                        "success": { "type": "boolean", "example": true },
+                                        "data": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/EstadoPostulacion" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "BasicAuth": {
+                "type": "http",
+                "scheme": "basic",
+                "description": "Autenticacion HTTP Basic con las credenciales de un usuario registrado (email:contrasena)."
+            }
+        },
+        "schemas": {
+            "Usuario": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "integer", "example": 1 },
+                    "nombre": { "type": "string", "example": "Maria Garcia" },
+                    "email": { "type": "string", "example": "maria@correo.cl" },
+                    "rol": { "type": "string", "enum": ["candidato", "reclutador"], "example": "candidato" },
+                    "activo": { "type": "integer", "example": 1 },
+                    "creado_en": { "type": "string", "example": "2026-07-27 05:00:16" },
+                    "actualizado_en": { "type": "string", "example": "2026-07-27 05:00:16" }
+                }
+            },
+            "UsuarioInput": {
+                "type": "object",
+                "required": ["nombre", "email", "contrasena", "rol"],
+                "properties": {
+                    "nombre": { "type": "string", "maxLength": 100, "description": "Nombre completo del usuario." },
+                    "email": { "type": "string", "format": "email", "maxLength": 150, "description": "Email unico (login)." },
+                    "contrasena": { "type": "string", "minLength": 8, "writeOnly": true, "description": "Contrasena (minimo 8 caracteres). Se guarda con password_hash()." },
+                    "rol": { "type": "string", "enum": ["candidato", "reclutador"] }
+                }
+            },
+            "UsuarioUpdate": {
+                "type": "object",
+                "description": "Actualizacion parcial de un usuario. Enviar solo los campos a modificar.",
+                "minProperties": 1,
+                "properties": {
+                    "nombre": { "type": "string", "maxLength": 100 },
+                    "email": { "type": "string", "format": "email", "maxLength": 150 },
+                    "contrasena": { "type": "string", "minLength": 8, "writeOnly": true },
+                    "rol": { "type": "string", "enum": ["candidato", "reclutador"] },
+                    "activo": { "type": "integer", "enum": [0, 1], "description": "1 = activo, 0 = inactivo." }
+                }
+            },
+            "Oferta": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "integer", "example": 3 },
+                    "reclutador_id": { "type": "integer", "example": 1 },
+                    "titulo": { "type": "string", "example": "Agente de Atencion Telefonica" },
+                    "descripcion": { "type": "string", "example": "Atencion a clientes en campana de servicio." },
+                    "requisitos": { "type": "string", "nullable": true, "example": "Excelente redaccion." },
+                    "salario": { "type": "number", "nullable": true, "example": 650000 },
+                    "fecha_cierre": { "type": "string", "nullable": true, "example": "2026-09-30", "description": "Fecha limite de postulacion (YYYY-MM-DD)." },
+                    "activa": { "type": "integer", "example": 1 },
+                    "creado_en": { "type": "string", "example": "2026-07-27 05:10:00" },
+                    "actualizado_en": { "type": "string", "example": "2026-07-27 05:10:00" }
+                }
+            },
+            "OfertaInput": {
+                "type": "object",
+                "required": ["titulo", "descripcion"],
+                "properties": {
+                    "titulo": { "type": "string", "maxLength": 150 },
+                    "descripcion": { "type": "string" },
+                    "requisitos": { "type": "string", "nullable": true },
+                    "salario": { "type": "number", "nullable": true, "description": "Salario ofrecido." },
+                    "fecha_cierre": { "type": "string", "nullable": true, "description": "Fecha limite de postulacion (YYYY-MM-DD)." }
+                }
+            },
+            "OfertaUpdate": {
+                "type": "object",
+                "description": "Actualizacion parcial de una oferta. Enviar solo los campos a modificar.",
+                "minProperties": 1,
+                "properties": {
+                    "titulo": { "type": "string", "maxLength": 150 },
+                    "descripcion": { "type": "string" },
+                    "requisitos": { "type": "string", "nullable": true },
+                    "salario": { "type": "number", "nullable": true },
+                    "fecha_cierre": { "type": "string", "nullable": true },
+                    "activa": { "type": "integer", "enum": [0, 1] }
+                }
+            },
+            "Postulacion": {
+                "type": "object",
+                "description": "Postulacion con campos adicionales del join (candidato, oferta y estado). Los campos `candidato_*`, `oferta_titulo` y `estado_codigo` varian segun el endpoint.",
+                "properties": {
+                    "id": { "type": "integer", "example": 5 },
+                    "candidato_id": { "type": "integer", "example": 2 },
+                    "oferta_id": { "type": "integer", "example": 3 },
+                    "estado_actual_id": { "type": "integer", "example": 1 },
+                    "creado_en": { "type": "string", "example": "2026-07-28 10:00:00" },
+                    "actualizado_en": { "type": "string", "example": "2026-07-28 10:00:00" },
+                    "candidato_nombre": { "type": "string", "example": "Maria Garcia" },
+                    "candidato_email": { "type": "string", "example": "maria@correo.cl" },
+                    "oferta_titulo": { "type": "string", "example": "Agente de Atencion Telefonica" },
+                    "estado_codigo": { "type": "string", "example": "Postulando" }
+                }
+            },
+            "HistorialItem": {
+                "type": "object",
+                "properties": {
+                    "comentario": { "type": "string", "nullable": true, "example": "Perfil en revision." },
+                    "creado_en": { "type": "string", "example": "2026-07-28 10:00:00" },
+                    "estado": { "type": "string", "example": "Revisando" },
+                    "reclutador": { "type": "string", "nullable": true, "example": "Reclutador Demo" }
+                }
+            },
+            "PostulacionInput": {
+                "type": "object",
+                "required": ["oferta_id"],
+                "properties": {
+                    "oferta_id": { "type": "integer", "description": "ID de la oferta a la que postula el candidato." }
+                }
+            },
+            "PostulacionUpdate": {
+                "type": "object",
+                "required": ["estado_id"],
+                "properties": {
+                    "estado_id": {
+                        "type": "integer",
+                        "description": "ID del estado del catalogo /estados. Catalogo semilla: 1 Postulando, 2 Revisando, 3 Entrevista Psicologica, 4 Entrevista Personal, 5 Seleccionado, 6 Descartado."
+                    },
+                    "comentario": { "type": "string", "nullable": true, "description": "Comentario registrado en el historial." }
+                }
+            },
+            "EstadoPostulacion": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "integer", "example": 1 },
+                    "codigo": { "type": "string", "example": "Postulando" },
+                    "descripcion": { "type": "string", "nullable": true, "example": "El candidato envio su postulacion" }
+                }
+            },
+            "Error": {
+                "type": "object",
+                "required": ["success", "message"],
+                "properties": {
+                    "success": { "type": "boolean", "example": false },
+                    "message": { "type": "string", "example": "Mensaje de error." },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": { "type": "string" },
+                        "description": "Errores de validacion por campo (solo en 422)."
+                    }
+                }
+            }
+        },
+        "responses": {
+            "Unauthorized": {
+                "description": "No autorizado: credenciales invalidas o ausentes (401).",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" }
+                    }
+                }
+            },
+            "Forbidden": {
+                "description": "Prohibido: el rol autenticado no tiene permisos para esta accion (403).",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Recurso no encontrado (404).",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" }
+                    }
+                }
+            },
+            "Conflict": {
+                "description": "Conflicto con el estado actual de los datos (409). Ej.: email ya existe, candidato ya postulado, usuario con dependencias.",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" }
+                    }
+                }
+            },
+            "ValidationError": {
+                "description": "Datos invalidos (422). El detalle por campo viaja en `errors`.",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Cliente Feliz - Documentacion Swagger</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
+    <link rel="stylesheet" href="./swagger-ui.css">
+</head>
+<body>
+    <div id="swagger-ui"></div>
+
+    <script src="./swagger-ui-bundle.js" charset="UTF-8"></script>
+    <script src="./swagger-ui-standalone-preset.js" charset="UTF-8"></script>
+
+    <script>
+        window.onload = function () {
+            // Carga la especificacion local y ajusta el servidor de la API
+            // a la misma origen desde donde se sirve esta pagina (../api/),
+            // asi el "Try it out" apunta a la API real sin CORS.
+            fetch('./openapi.json')
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('No se pudo cargar openapi.json (' + response.status + ')');
+                    }
+                    return response.json();
+                })
+                .then(function (spec) {
+                    var apiBase = new URL('../api/', window.location.href).toString();
+                    apiBase = apiBase.replace(/\/$/, '');
+                    spec.servers = [{ url: apiBase }];
+
+                    var ui = SwaggerUIBundle({
+                        spec: spec,
+                        dom_id: '#swagger-ui',
+                        deepLinking: true,
+                        displayRequestDuration: true,
+                        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+                        layout: 'StandaloneLayout'
+                    });
+
+                    window.ui = ui;
+                })
+                .catch(function (error) {
+                    document.getElementById('swagger-ui').innerHTML =
+                        '<div style="font-family:sans-serif;padding:24px;color:#a94442;">' +
+                        'Error al iniciar Swagger UI: ' + error.message +
+                        '</div>';
+                });
+        };
+    </script>
+</body>
+</html>
