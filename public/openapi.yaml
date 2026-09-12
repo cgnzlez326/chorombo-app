@@ -55,6 +55,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocumentoResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -98,6 +100,8 @@ paths:
                 $ref: '#/components/schemas/DocumentoResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -119,6 +123,8 @@ paths:
                 $ref: '#/components/schemas/DocumentoResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -351,3 +357,18 @@ components:
               details:
                 fecha:
                   - El campo es obligatorio.
+
+    Conflict:
+      description: Ya existe un documento con el mismo archivo.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: DUPLICATE_DOCUMENT
+              message: Ya existe un documento con el mismo archivo.
+              details:
+                documento_id: 7
+                titulo: Acta de prueba

@@ -79,7 +79,7 @@ tests/                Colección Postman + fixtures
   - Éxito: `{ "success": true, "data": ... }` (y `"message"` cuando corresponda).
   - Listado: `{ "success": true, "data": [...], "total": n }`.
   - Error: `{ "success": false, "error": { "code", "message", "details"? } }`.
-- Códigos HTTP: 200, 201, 404, 405, 415, 422 (validación), 500.
+- Códigos HTTP: 200, 201, 404, 405, 409 (duplicado), 415, 422 (validación), 500.
 
 ## Comandos útiles
 
@@ -112,3 +112,6 @@ curl.exe -s http://localhost/chorombo-app/api/tipos-documento
   a `rename`/`copy` en `FileStorage`, porque `move_uploaded_file` solo acepta subidas HTTP.
 - Al importar `schema.sql` con el cliente `mysql` en Windows hay que usar
   `--default-character-set=utf8mb4`, o los acentos quedan mal codificados.
+- La unicidad de documentos se controla con `archivo_hash` (SHA-256) e índice `UNIQUE`, no
+  iterando archivos: la verificación es una consulta indexada. El pre-chequeo da el `409` con
+  detalle y el índice único cubre la carrera entre requests simultáneos.

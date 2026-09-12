@@ -81,6 +81,37 @@
           }
         },
         {
+          "name": "Crear documento duplicado (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test('Código DUPLICATE_DOCUMENT', () => pm.expect(body.error.code).to.eql('DUPLICATE_DOCUMENT'));",
+                  "pm.test('Indica el documento existente', () => pm.expect(body.error.details).to.have.property('documento_id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "titulo", "value": "Acta duplicada", "type": "text" },
+                { "key": "tipo_documento_id", "value": "4", "type": "text" },
+                { "key": "fecha", "value": "2026-09-10", "type": "text" },
+                { "key": "archivo", "type": "file", "src": "tests/fixtures/documento-prueba.pdf" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/documentos"
+          }
+        },
+        {
           "name": "Listar documentos",
           "event": [
             {

@@ -13,6 +13,8 @@ interface DocumentoRepositoryInterface
 
     public function find(int $id): ?Documento;
 
+    public function findByArchivoHash(string $hash, ?int $excludeId = null): ?Documento;
+
     public function create(Documento $documento): int;
 
     public function update(int $id, Documento $documento): void;
