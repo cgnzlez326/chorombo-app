@@ -123,3 +123,7 @@ curl.exe -s http://localhost/chorombo-app/api/tipos-documento
 - El rate limiting es por IP con ventana fija y almacenamiento en archivos (`flock`), sin
   Redis ni APCu, y se aplica en `bootstrap.php` antes del router. Límites configurables en
   `config/config.php` (`rate_limit`).
+- El repositorio GitHub pasó de llamarse `ipss-backend` a `chorombo-app`
+  (`https://github.com/cgnzlez326/chorombo-app`). El remote local puede seguir apuntando al
+  nombre anterior: GitHub redirige, pero conviene actualizarlo con
+  `git remote set-url origin https://github.com/cgnzlez326/chorombo-app.git`.
