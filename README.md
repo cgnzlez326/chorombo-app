@@ -96,9 +96,20 @@ escritura (`POST`, `PUT`, `PATCH`, `DELETE`). Al superarlo responde `429` con el
 
 ## Pruebas
 
+### Automatizadas (sin Composer)
+
+```powershell
+& "C:\xampp\php\php.exe" tests/run.php
+```
+
+Cubren `Validator`, `Router` y `DocumentoService` con repositorios, almacenamiento y
+transacciones en memoria (`tests/Support/Fakes.php`).
+
+### Manuales con Postman
+
 Importar `tests/postman_collection.json` en Postman (variable `baseUrl =
-http://localhost/chorombo-app`). Incluye el flujo CRUD completo y casos inválidos
-(422, 404, 405).
+http://localhost/chorombo-app`). Incluye el flujo CRUD, casos inválidos (422, 404, 405) y
+paginación (metadata y `per_page`/`page` inválidos).
 
 ```powershell
 # Verificar sintaxis de todo el proyecto
