@@ -55,6 +55,8 @@ paths:
                 $ref: '#/components/schemas/DocumentoCollection'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     post:
       tags: [Documentos]
@@ -78,6 +80,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /api/documentos/{id}:
     parameters:
@@ -100,6 +104,8 @@ paths:
                 $ref: '#/components/schemas/DocumentoResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     put:
       tags: [Documentos]
@@ -125,6 +131,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     patch:
       tags: [Documentos]
@@ -150,6 +158,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     delete:
       tags: [Documentos]
@@ -163,6 +173,8 @@ paths:
                 $ref: '#/components/schemas/Success'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /api/documentos/{id}/archivo:
     get:
@@ -185,6 +197,8 @@ paths:
                 format: binary
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /api/tipos-documento:
     get:
@@ -197,6 +211,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TipoDocumentoCollection'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
 components:
   schemas:
@@ -416,3 +432,15 @@ components:
             error:
               code: PAYLOAD_TOO_LARGE
               message: El cuerpo de la solicitud supera el máximo permitido de 6 MB.
+
+    TooManyRequests:
+      description: Se superó el límite de solicitudes.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: RATE_LIMITED
+              message: Demasiadas solicitudes. Intente nuevamente más tarde.

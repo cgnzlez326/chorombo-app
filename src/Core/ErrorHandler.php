@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Exceptions\HttpException;
+use App\Exceptions\TooManyRequestsException;
 use ErrorException;
 use Throwable;
 
@@ -27,6 +28,10 @@ class ErrorHandler
 
         set_exception_handler(static function (Throwable $exception): void {
             if ($exception instanceof HttpException) {
+                if ($exception instanceof TooManyRequestsException) {
+                    header('Retry-After: ' . $exception->retryAfter());
+                }
+
                 Response::error(
                     $exception->errorCode(),
                     $exception->getMessage(),

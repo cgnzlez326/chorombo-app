@@ -17,6 +17,14 @@ return [
         'max_per_page' => 100,
     ],
 
+    'rate_limit' => [
+        'enabled'            => true,
+        'directory'          => __DIR__ . '/../storage/cache/ratelimit',
+        'window'             => 60,
+        'max_requests'       => 120,
+        'write_max_requests' => 60,
+    ],
+
     'cors' => [
         'allowed_origins' => ['*'],
         'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
