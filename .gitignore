@@ -6,6 +6,9 @@
 /storage/uploads/*
 !/storage/uploads/.gitkeep
 
+# Cache y rate limiting
+/storage/cache/
+
 # Sistema
 .DS_Store
 Thumbs.db
