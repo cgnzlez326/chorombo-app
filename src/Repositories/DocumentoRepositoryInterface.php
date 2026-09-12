@@ -9,7 +9,9 @@ use App\Models\Documento;
 interface DocumentoRepositoryInterface
 {
     /** @return Documento[] */
-    public function all(?int $tipoDocumentoId = null): array;
+    public function paginate(?int $tipoDocumentoId, int $limit, int $offset): array;
+
+    public function count(?int $tipoDocumentoId = null): int;
 
     public function find(int $id): ?Documento;
 

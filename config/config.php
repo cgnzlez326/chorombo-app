@@ -12,6 +12,11 @@ return [
         'charset' => 'utf8mb4',
     ],
 
+    'pagination' => [
+        'per_page'     => 20,
+        'max_per_page' => 100,
+    ],
+
     'cors' => [
         'allowed_origins' => ['*'],
         'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

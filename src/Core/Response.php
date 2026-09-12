@@ -17,13 +17,21 @@ class Response
         self::json($payload, $status);
     }
 
-    public static function collection(array $items, ?int $total = null): never
+    public static function collection(array $items, ?int $total = null, ?int $page = null, ?int $perPage = null): never
     {
-        self::json([
+        $payload = [
             'success' => true,
             'data'    => $items,
             'total'   => $total ?? count($items),
-        ], 200);
+        ];
+
+        if ($page !== null && $perPage !== null && $perPage > 0) {
+            $payload['page']      = $page;
+            $payload['per_page']  = $perPage;
+            $payload['last_page'] = (int) ceil($payload['total'] / $perPage);
+        }
+
+        self::json($payload, 200);
     }
 
     public static function error(string $code, string $message, int $status, ?array $details = null): never

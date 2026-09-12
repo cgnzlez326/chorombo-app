@@ -34,12 +34,17 @@ $fileStorage = new FileStorage(
 );
 
 $controllers = [
-    'documento'     => new DocumentoController(new DocumentoService(
-        $documentoRepository,
-        $tipoDocumentoRepository,
-        new Validator(),
-        $fileStorage,
-    )),
+    'documento'     => new DocumentoController(
+        new DocumentoService(
+            $documentoRepository,
+            $tipoDocumentoRepository,
+            new Validator(),
+            $fileStorage,
+            $database,
+        ),
+        $config['pagination']['per_page'],
+        $config['pagination']['max_per_page'],
+    ),
     'tipoDocumento' => new TipoDocumentoController(new TipoDocumentoService($tipoDocumentoRepository)),
 ];
 

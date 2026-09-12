@@ -7,6 +7,7 @@ namespace App\Core;
 use PDO;
 use PDOException;
 use RuntimeException;
+use Throwable;
 
 class Database
 {
@@ -23,6 +24,25 @@ class Database
         }
 
         return $this->connection;
+    }
+
+    public function transaction(callable $callback): mixed
+    {
+        $connection = $this->connection();
+        $connection->beginTransaction();
+
+        try {
+            $result = $callback();
+            $connection->commit();
+
+            return $result;
+        } catch (Throwable $exception) {
+            if ($connection->inTransaction()) {
+                $connection->rollBack();
+            }
+
+            throw $exception;
+        }
     }
 
     private function connect(): PDO

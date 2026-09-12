@@ -26,7 +26,7 @@ class DocumentoRepository implements DocumentoRepositoryInterface
     {
     }
 
-    public function all(?int $tipoDocumentoId = null): array
+    public function paginate(?int $tipoDocumentoId, int $limit, int $offset): array
     {
         $sql = self::SELECT;
         $params = [];
@@ -36,7 +36,30 @@ class DocumentoRepository implements DocumentoRepositoryInterface
             $params[':tipo_documento_id'] = $tipoDocumentoId;
         }
 
-        $sql .= ' ORDER BY d.fecha DESC, d.id DESC';
+        $sql .= ' ORDER BY d.fecha DESC, d.id DESC LIMIT :limit OFFSET :offset';
+
+        $statement = $this->connection()->prepare($sql);
+
+        foreach ($params as $name => $value) {
+            $statement->bindValue($name, $value, PDO::PARAM_INT);
+        }
+
+        $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $statement->execute();
+
+        return array_map([Documento::class, 'fromRow'], $statement->fetchAll());
+    }
+
+    public function count(?int $tipoDocumentoId = null): int
+    {
+        $sql = 'SELECT COUNT(*) FROM documentos d';
+        $params = [];
+
+        if ($tipoDocumentoId !== null) {
+            $sql .= ' WHERE d.tipo_documento_id = :tipo_documento_id';
+            $params[':tipo_documento_id'] = $tipoDocumentoId;
+        }
 
         $statement = $this->connection()->prepare($sql);
 
@@ -46,7 +69,7 @@ class DocumentoRepository implements DocumentoRepositoryInterface
 
         $statement->execute();
 
-        return array_map([Documento::class, 'fromRow'], $statement->fetchAll());
+        return (int) $statement->fetchColumn();
     }
 
     public function find(int $id): ?Documento

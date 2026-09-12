@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Core\Database;
 use App\Core\FileStorage;
 use App\Core\Validator;
 use App\Exceptions\DuplicateException;
@@ -12,6 +13,7 @@ use App\Exceptions\ValidationException;
 use App\Models\Documento;
 use App\Repositories\DocumentoRepositoryInterface;
 use App\Repositories\TipoDocumentoRepositoryInterface;
+use Throwable;
 
 class DocumentoService
 {
@@ -27,13 +29,19 @@ class DocumentoService
         private readonly TipoDocumentoRepositoryInterface $tipoDocumentoRepository,
         private readonly Validator $validator,
         private readonly FileStorage $fileStorage,
+        private readonly Database $database,
     ) {
     }
 
-    /** @return Documento[] */
-    public function list(?int $tipoDocumentoId = null): array
+    /** @return array{items: Documento[], total: int, page: int, per_page: int} */
+    public function list(?int $tipoDocumentoId, int $page, int $perPage): array
     {
-        return $this->repository->all($tipoDocumentoId);
+        return [
+            'items'    => $this->repository->paginate($tipoDocumentoId, $perPage, ($page - 1) * $perPage),
+            'total'    => $this->repository->count($tipoDocumentoId),
+            'page'     => $page,
+            'per_page' => $perPage,
+        ];
     }
 
     public function get(int $id): Documento
@@ -52,30 +60,28 @@ class DocumentoService
         $validated = $this->validator->validate($data, self::RULES);
         $this->assertTipoDocumento((int) $validated['tipo_documento_id']);
 
-        $archivo = null;
-        $archivoNombre = null;
-        $archivoHash = null;
+        $stored = null;
 
         if ($file !== null) {
             $stored = $this->fileStorage->store($file);
             $this->assertArchivoNoDuplicado($stored);
-            $archivo = $stored['filename'];
-            $archivoNombre = $stored['original_name'];
-            $archivoHash = $stored['hash'];
         }
 
         try {
-            $id = $this->repository->create(new Documento(
+            $id = $this->database->transaction(fn (): int => $this->repository->create(new Documento(
                 titulo: $validated['titulo'],
                 tipoDocumentoId: (int) $validated['tipo_documento_id'],
                 fecha: $validated['fecha'],
                 descripcion: $validated['descripcion'] ?? null,
-                archivo: $archivo,
-                archivoNombreOriginal: $archivoNombre,
-                archivoHash: $archivoHash,
-            ));
-        } catch (DuplicateException $exception) {
-            $this->fileStorage->delete($archivo);
+                archivo: $stored['filename'] ?? null,
+                archivoNombreOriginal: $stored['original_name'] ?? null,
+                archivoHash: $stored['hash'] ?? null,
+            )));
+        } catch (Throwable $exception) {
+            if ($stored !== null) {
+                $this->fileStorage->delete($stored['filename']);
+            }
+
             throw $exception;
         }
 
@@ -99,34 +105,38 @@ class DocumentoService
         $archivo = $current->archivo;
         $archivoNombre = $current->archivoNombreOriginal;
         $archivoHash = $current->archivoHash;
-        $nuevoArchivo = null;
+        $stored = null;
 
         if ($file !== null) {
             $stored = $this->fileStorage->store($file);
             $this->assertArchivoNoDuplicado($stored, $id);
-            $nuevoArchivo = $stored['filename'];
             $archivo = $stored['filename'];
             $archivoNombre = $stored['original_name'];
             $archivoHash = $stored['hash'];
         }
 
         try {
-            $this->repository->update($id, new Documento(
-                id: $id,
-                titulo: $validated['titulo'],
-                tipoDocumentoId: (int) $validated['tipo_documento_id'],
-                fecha: $validated['fecha'],
-                descripcion: $validated['descripcion'] ?? null,
-                archivo: $archivo,
-                archivoNombreOriginal: $archivoNombre,
-                archivoHash: $archivoHash,
-            ));
-        } catch (DuplicateException $exception) {
-            $this->fileStorage->delete($nuevoArchivo);
+            $this->database->transaction(function () use ($id, $validated, $archivo, $archivoNombre, $archivoHash): void {
+                $this->repository->update($id, new Documento(
+                    id: $id,
+                    titulo: $validated['titulo'],
+                    tipoDocumentoId: (int) $validated['tipo_documento_id'],
+                    fecha: $validated['fecha'],
+                    descripcion: $validated['descripcion'] ?? null,
+                    archivo: $archivo,
+                    archivoNombreOriginal: $archivoNombre,
+                    archivoHash: $archivoHash,
+                ));
+            });
+        } catch (Throwable $exception) {
+            if ($stored !== null) {
+                $this->fileStorage->delete($stored['filename']);
+            }
+
             throw $exception;
         }
 
-        if ($nuevoArchivo !== null) {
+        if ($stored !== null) {
             $this->fileStorage->delete($current->archivo);
         }
 
@@ -137,8 +147,19 @@ class DocumentoService
     {
         $documento = $this->get($id);
 
-        $this->fileStorage->delete($documento->archivo);
-        $this->repository->delete($id);
+        $this->database->transaction(function () use ($id): void {
+            $this->repository->delete($id);
+        });
+
+        try {
+            $this->fileStorage->delete($documento->archivo);
+        } catch (Throwable $exception) {
+            error_log(sprintf(
+                '[chorombo-api] No se pudo eliminar el archivo %s: %s',
+                (string) $documento->archivo,
+                $exception->getMessage(),
+            ));
+        }
     }
 
     public function file(int $id): array

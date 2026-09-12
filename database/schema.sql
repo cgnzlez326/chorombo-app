@@ -37,7 +37,7 @@ CREATE TABLE documentos (
     updated_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_documentos_archivo_hash (archivo_hash),
-    KEY idx_documentos_tipo_documento (tipo_documento_id),
+    KEY idx_documentos_tipo_fecha (tipo_documento_id, fecha),
     KEY idx_documentos_fecha (fecha),
     CONSTRAINT fk_documentos_tipo_documento
         FOREIGN KEY (tipo_documento_id) REFERENCES tipos_documento (id)
