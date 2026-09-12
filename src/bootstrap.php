@@ -50,6 +50,6 @@ $controllers = [
 
 return [
     'router'      => new Router(),
-    'request'     => Request::capture(),
+    'request'     => Request::capture($config['uploads']['max_request_size']),
     'controllers' => $controllers,
 ];

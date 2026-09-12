@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Exceptions\PayloadTooLargeException;
+
 class Request
 {
+    private static array $temporaryFiles = [];
+
     private function __construct(
         public readonly string $method,
         public readonly string $path,
@@ -15,10 +19,13 @@ class Request
     ) {
     }
 
-    public static function capture(): self
+    public static function capture(int $maxRequestSize = 0): self
     {
+        self::$temporaryFiles = [];
+        register_shutdown_function([self::class, 'cleanupTemporaryFiles']);
+
         $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-        [$body, $files] = self::parsePayload($method);
+        [$body, $files] = self::parsePayload($method, $maxRequestSize);
 
         return new self(
             method: $method,
@@ -27,6 +34,15 @@ class Request
             body: $body,
             files: $files,
         );
+    }
+
+    public static function cleanupTemporaryFiles(): void
+    {
+        foreach (self::$temporaryFiles as $path) {
+            if (is_file($path)) {
+                @unlink($path);
+            }
+        }
     }
 
     public function input(string $key, mixed $default = null): mixed
@@ -50,9 +66,11 @@ class Request
      *
      * @return array{0: array, 1: array}
      */
-    private static function parsePayload(string $method): array
+    private static function parsePayload(string $method, int $maxRequestSize): array
     {
         if ($method === 'POST') {
+            self::assertRequestSize($maxRequestSize);
+
             return [$_POST ?? [], $_FILES ?? []];
         }
 
@@ -61,17 +79,14 @@ class Request
         }
 
         $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        $raw = self::readBody($maxRequestSize);
 
-        if (preg_match('#boundary=(.+)$#i', $contentType, $matches)) {
-            $raw = file_get_contents('php://input');
-
-            return $raw === false ? [[], []] : self::parseMultipart($raw, trim($matches[1], '"'));
+        if ($raw === '') {
+            return [[], []];
         }
 
-        $raw = file_get_contents('php://input');
-
-        if ($raw === false || $raw === '') {
-            return [[], []];
+        if (preg_match('#boundary=(.+)$#i', $contentType, $matches)) {
+            return self::parseMultipart($raw, trim($matches[1], '"'));
         }
 
         if (str_contains($contentType, 'application/json')) {
@@ -85,6 +100,34 @@ class Request
         return [$fields, []];
     }
 
+    private static function assertRequestSize(int $maxRequestSize): void
+    {
+        if ($maxRequestSize <= 0) {
+            return;
+        }
+
+        if ((int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > $maxRequestSize) {
+            throw new PayloadTooLargeException($maxRequestSize);
+        }
+    }
+
+    private static function readBody(int $maxRequestSize): string
+    {
+        self::assertRequestSize($maxRequestSize);
+
+        $raw = file_get_contents('php://input');
+
+        if ($raw === false) {
+            return '';
+        }
+
+        if ($maxRequestSize > 0 && strlen($raw) > $maxRequestSize) {
+            throw new PayloadTooLargeException($maxRequestSize);
+        }
+
+        return $raw;
+    }
+
     /**
      * @return array{0: array, 1: array}
      */
@@ -93,7 +136,7 @@ class Request
         $fields = [];
         $files = [];
 
-        foreach (explode('--' . $boundary, $raw) as $part) {
+        foreach (explode("\r\n--" . $boundary, "\r\n" . $raw) as $part) {
             $part = ltrim($part, "\r\n");
 
             if ($part === '' || str_starts_with($part, '--')) {
@@ -120,14 +163,25 @@ class Request
             $name = $nameMatch[1];
 
             if (preg_match('#filename="([^"]*)"#i', $headers, $fileMatch) && $fileMatch[1] !== '') {
-                $files[$name] = self::temporaryFile($fileMatch[1], $headers, $content);
+                self::assign($files, $name, self::temporaryFile($fileMatch[1], $headers, $content));
                 continue;
             }
 
-            $fields[$name] = $content;
+            self::assign($fields, $name, $content);
         }
 
         return [$fields, $files];
+    }
+
+    private static function assign(array &$target, string $name, mixed $value): void
+    {
+        if (str_ends_with($name, '[]')) {
+            $target[substr($name, 0, -2)][] = $value;
+
+            return;
+        }
+
+        $target[$name] = $value;
     }
 
     private static function temporaryFile(string $originalName, string $headers, string $content): array
@@ -138,6 +192,7 @@ class Request
             return ['name' => $originalName, 'error' => UPLOAD_ERR_CANT_WRITE, 'tmp_name' => '', 'size' => 0];
         }
 
+        self::$temporaryFiles[] = $path;
         file_put_contents($path, $content);
 
         $contentType = preg_match('#Content-Type:\s*(.+)#i', $headers, $match) ? trim($match[1]) : '';

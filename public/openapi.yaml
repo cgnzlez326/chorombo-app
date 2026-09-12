@@ -74,6 +74,8 @@ paths:
                 $ref: '#/components/schemas/DocumentoResponse'
         '409':
           $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -119,6 +121,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -142,6 +146,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -398,3 +404,15 @@ components:
               details:
                 documento_id: 7
                 titulo: Acta de prueba
+
+    PayloadTooLarge:
+      description: El cuerpo de la solicitud supera el tamaño máximo permitido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: PAYLOAD_TOO_LARGE
+              message: El cuerpo de la solicitud supera el máximo permitido de 6 MB.
