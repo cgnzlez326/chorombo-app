@@ -49,7 +49,6 @@ class Documento
             'descripcion'             => $this->descripcion,
             'archivo'                 => $this->archivo,
             'archivo_nombre_original' => $this->archivoNombreOriginal,
-            'archivo_url'             => $this->archivo !== null ? "/api/documentos/{$this->id}/archivo" : null,
             'created_at'              => $this->createdAt,
             'updated_at'              => $this->updatedAt,
         ];
