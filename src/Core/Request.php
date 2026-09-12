@@ -6,6 +6,10 @@ namespace App\Core;
 
 use App\Exceptions\PayloadTooLargeException;
 
+/**
+ * Representa la petición HTTP actual ya normalizada (método, path, query, body y archivos).
+ * Se construye una sola vez con `capture()` y abstrae las diferencias entre POST y PUT/PATCH.
+ */
 class Request
 {
     private static array $temporaryFiles = [];
@@ -19,6 +23,7 @@ class Request
     ) {
     }
 
+    /** Lee superglobales y cuerpo de la petición; registra la limpieza de archivos temporales al terminar. */
     public static function capture(int $maxRequestSize = 0): self
     {
         self::$temporaryFiles = [];
@@ -45,11 +50,13 @@ class Request
         }
     }
 
+    /** Devuelve un campo del cuerpo o el valor por defecto. */
     public function input(string $key, mixed $default = null): mixed
     {
         return $this->body[$key] ?? $default;
     }
 
+    /** Devuelve la descripción del archivo subido o null si no se envió ninguno. */
     public function file(string $key): ?array
     {
         $file = $this->files[$key] ?? null;
@@ -100,6 +107,7 @@ class Request
         return [$fields, []];
     }
 
+    /** Corta la petición con 413 si Content-Length supera el máximo configurado. */
     private static function assertRequestSize(int $maxRequestSize): void
     {
         if ($maxRequestSize <= 0) {
@@ -111,6 +119,7 @@ class Request
         }
     }
 
+    /** Lee `php://input` validando también el tamaño real del cuerpo. */
     private static function readBody(int $maxRequestSize): string
     {
         self::assertRequestSize($maxRequestSize);
@@ -173,6 +182,7 @@ class Request
         return [$fields, $files];
     }
 
+    /** Asigna el valor respetando la convención de campos repetidos `campo[]`. */
     private static function assign(array &$target, string $name, mixed $value): void
     {
         if (str_ends_with($name, '[]')) {
@@ -184,6 +194,7 @@ class Request
         $target[$name] = $value;
     }
 
+    /** Escribe el contenido de una parte multipart en un temporal y lo devuelve con formato de $_FILES. */
     private static function temporaryFile(string $originalName, string $headers, string $content): array
     {
         $path = tempnam(sys_get_temp_dir(), 'chorombo_');
@@ -206,6 +217,7 @@ class Request
         ];
     }
 
+    /** Obtiene el path de la URI quitando el directorio base donde se sirve la app. */
     private static function resolvePath(): string
     {
         $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
@@ -218,6 +230,7 @@ class Request
         return '/' . trim($uri, '/');
     }
 
+    /** Deduce el prefijo base (ej. `/chorombo-app`) a partir de SCRIPT_NAME. */
     private static function basePath(): string
     {
         $script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');

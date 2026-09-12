@@ -4,13 +4,21 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+/**
+ * Rate limiting por ventana fija con almacenamiento en archivos y bloqueo `flock`.
+ * No requiere Redis ni APCu: cada clave se guarda como JSON en el directorio indicado.
+ */
 class RateLimiter
 {
     public function __construct(private readonly string $directory)
     {
     }
 
-    /** @return array{allowed: bool, retry_after: int} */
+    /**
+     * Suma un intento para $key y responde si sigue permitido y cuándo reintentar.
+     *
+     * @return array{allowed: bool, retry_after: int}
+     */
     public function attempt(string $key, int $maxRequests, int $windowSeconds): array
     {
         if ($maxRequests <= 0 || $windowSeconds <= 0) {
@@ -55,7 +63,11 @@ class RateLimiter
         }
     }
 
-    /** @return array{count: int, reset_at: int} */
+    /**
+     * Lee el estado guardado o devuelve una ventana nueva si el archivo es inválido.
+     *
+     * @return array{count: int, reset_at: int}
+     */
     private function read($handle, int $now, int $windowSeconds): array
     {
         $decoded = json_decode((string) stream_get_contents($handle), true);
@@ -67,11 +79,13 @@ class RateLimiter
         return ['count' => (int) $decoded['count'], 'reset_at' => (int) $decoded['reset_at']];
     }
 
+    /** Ruta del archivo de estado: hash SHA-256 de la clave para evitar nombres inseguros. */
     private function path(string $key): string
     {
         return rtrim($this->directory, '/\\') . DIRECTORY_SEPARATOR . hash('sha256', $key) . '.json';
     }
 
+    /** Crea el directorio de estado si aún no existe. */
     private function ensureDirectory(): void
     {
         if (!is_dir($this->directory)) {

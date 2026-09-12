@@ -9,6 +9,10 @@ use PDOException;
 use RuntimeException;
 use Throwable;
 
+/**
+ * Conexión PDO perezosa y gestor de transacciones.
+ * Implementa TransactionManagerInterface para que los servicios no dependan de PDO directamente.
+ */
 class Database implements TransactionManagerInterface
 {
     private ?PDO $connection = null;
@@ -17,6 +21,7 @@ class Database implements TransactionManagerInterface
     {
     }
 
+    /** Devuelve la conexión compartida, abriéndola la primera vez. */
     public function connection(): PDO
     {
         if ($this->connection === null) {
@@ -26,6 +31,7 @@ class Database implements TransactionManagerInterface
         return $this->connection;
     }
 
+    /** Ejecuta $callback dentro de una transacción y hace rollback ante cualquier excepción. */
     public function transaction(callable $callback): mixed
     {
         $connection = $this->connection();

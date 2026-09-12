@@ -11,6 +11,10 @@ use App\Repositories\DocumentoRepositoryInterface;
 use App\Repositories\TipoDocumentoRepositoryInterface;
 use Throwable;
 
+/**
+ * Repositorio de documentos en memoria para pruebas: evita la base de datos real.
+ * `$failOnCreate` permite simular fallos de persistencia.
+ */
 final class InMemoryDocumentoRepository implements DocumentoRepositoryInterface
 {
     /** @var array<int, Documento> */
@@ -46,6 +50,7 @@ final class InMemoryDocumentoRepository implements DocumentoRepositoryInterface
         return null;
     }
 
+    /** Simula la inserción; lanza `$failOnCreate` si fue configurado. */
     public function create(Documento $documento): int
     {
         if ($this->failOnCreate !== null) {
@@ -81,6 +86,7 @@ final class InMemoryDocumentoRepository implements DocumentoRepositoryInterface
     }
 }
 
+/** Catálogo de tipos de documento falso: solo responde a exists() con los ids indicados. */
 final class FakeTipoDocumentoRepository implements TipoDocumentoRepositoryInterface
 {
     /** @param int[] $ids */
@@ -99,6 +105,7 @@ final class FakeTipoDocumentoRepository implements TipoDocumentoRepositoryInterf
     }
 }
 
+/** Almacenamiento de archivos en memoria para verificar guardados y eliminaciones. */
 final class InMemoryFileStorage implements FileStorageInterface
 {
     /** @var array<string, array> */
@@ -145,6 +152,7 @@ final class InMemoryFileStorage implements FileStorageInterface
     }
 }
 
+/** Gestor de transacciones falso: ejecuta el callback directamente, sin transacción real. */
 final class FakeTransactionManager implements TransactionManagerInterface
 {
     public function transaction(callable $callback): mixed

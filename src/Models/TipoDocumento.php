@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+/** Entidad de solo lectura del catálogo de tipos de documento. */
 class TipoDocumento
 {
     public function __construct(
@@ -12,6 +13,7 @@ class TipoDocumento
     ) {
     }
 
+    /** Hidrata la entidad desde una fila de base de datos. */
     public static function fromRow(array $row): self
     {
         return new self(
@@ -20,6 +22,7 @@ class TipoDocumento
         );
     }
 
+    /** Representación pública de la entidad. */
     public function toArray(): array
     {
         return [

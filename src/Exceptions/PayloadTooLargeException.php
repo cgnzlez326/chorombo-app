@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+/** Error 413 cuando el cuerpo de la petición supera el máximo permitido. */
 class PayloadTooLargeException extends HttpException
 {
     public function __construct(int $maxBytes)

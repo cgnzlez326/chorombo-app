@@ -6,6 +6,7 @@ namespace App\Repositories;
 
 use App\Models\TipoDocumento;
 
+/** Contrato de lectura del catálogo de tipos de documento. */
 interface TipoDocumentoRepositoryInterface
 {
     /** @return TipoDocumento[] */

@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+/**
+ * Autoload PSR-4 propio para el namespace `App\` (sin Composer).
+ * Traduce `App\Core\Router` a `src/Core/Router.php`.
+ */
 spl_autoload_register(static function (string $class): void {
     $prefix = 'App\\';
 

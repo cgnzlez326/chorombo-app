@@ -7,6 +7,10 @@ namespace App\Core;
 use App\Exceptions\ValidationException;
 use RuntimeException;
 
+/**
+ * Almacenamiento de archivos subidos en disco, con validación de extensión y MIME real.
+ * Genera un nombre aleatorio para el archivo y calcula su hash SHA-256 para detectar duplicados.
+ */
 class FileStorage implements FileStorageInterface
 {
     private const MIME_TYPES = [
@@ -35,6 +39,7 @@ class FileStorage implements FileStorageInterface
     ) {
     }
 
+    /** Valida y guarda el archivo; devuelve `filename`, `original_name` y `hash`. */
     public function store(array $file): array
     {
         $this->assertUploaded($file);
@@ -74,6 +79,7 @@ class FileStorage implements FileStorageInterface
         ];
     }
 
+    /** Elimina el archivo si existe; ignora nombres nulos o vacíos. */
     public function delete(?string $filename): void
     {
         if ($filename === null || $filename === '') {
@@ -87,16 +93,19 @@ class FileStorage implements FileStorageInterface
         }
     }
 
+    /** Indica si el archivo existe en el directorio de subidas. */
     public function exists(string $filename): bool
     {
         return is_file($this->path($filename));
     }
 
+    /** Ruta absoluta del archivo, forzando basename para evitar traversal. */
     public function path(string $filename): string
     {
         return rtrim($this->directory, '/\\') . DIRECTORY_SEPARATOR . basename($filename);
     }
 
+    /** Verifica que la subida terminó sin errores y que el tamaño está dentro del máximo. */
     private function assertUploaded(array $file): void
     {
         $error = $file['error'] ?? UPLOAD_ERR_NO_FILE;
@@ -114,6 +123,7 @@ class FileStorage implements FileStorageInterface
         }
     }
 
+    /** Comprueba que el MIME detectado del contenido corresponda a la extensión declarada. */
     private function mimeIsAllowed(string $tmpPath, string $extension): bool
     {
         $detected = mime_content_type($tmpPath) ?: '';
@@ -122,6 +132,7 @@ class FileStorage implements FileStorageInterface
         return in_array($detected, $allowed, true);
     }
 
+    /** Mueve el archivo soportando subidas HTTP y temporales creados por Request (rename/copy). */
     private function move(string $source, string $target): bool
     {
         if (is_uploaded_file($source)) {
@@ -141,6 +152,7 @@ class FileStorage implements FileStorageInterface
         return false;
     }
 
+    /** Crea el directorio de subidas si aún no existe. */
     private function ensureDirectory(): void
     {
         if (!is_dir($this->directory)) {
@@ -148,6 +160,7 @@ class FileStorage implements FileStorageInterface
         }
     }
 
+    /** Traduce un código UPLOAD_ERR_* a un mensaje legible. */
     private function uploadErrorMessage(int $error): string
     {
         return match ($error) {

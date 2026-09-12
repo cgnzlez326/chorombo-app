@@ -12,6 +12,12 @@ use Tests\Support\FakeTransactionManager;
 use Tests\Support\InMemoryDocumentoRepository;
 use Tests\Support\InMemoryFileStorage;
 
+/**
+ * Pruebas de la lógica de negocio de documentos: validación, duplicados, limpieza de
+ * archivos ante fallos, reemplazo en update, borrado y paginación.
+ */
+
+/** Construye el servicio con repositorios y almacenamiento en memoria. */
 function makeService(
     ?InMemoryDocumentoRepository $repository = null,
     ?InMemoryFileStorage $storage = null,
@@ -25,7 +31,11 @@ function makeService(
     );
 }
 
-/** @return array<string, string> */
+/**
+ * Datos válidos base para crear documentos, con overrides opcionales.
+ *
+ * @return array<string, string>
+ */
 function validData(array $overrides = []): array
 {
     return array_merge(

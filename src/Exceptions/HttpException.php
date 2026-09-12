@@ -6,6 +6,10 @@ namespace App\Exceptions;
 
 use RuntimeException;
 
+/**
+ * Excepción base de errores HTTP: transporta status, código de error y detalles opcionales
+ * que ErrorHandler usa para construir la respuesta JSON de error.
+ */
 class HttpException extends RuntimeException
 {
     public function __construct(

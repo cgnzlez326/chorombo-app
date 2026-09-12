@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+/**
+ * Entidad Documento. Mantiene el hash del archivo (no expuesto en toArray) para la
+ * detección de duplicados, y el nombre original para la descarga.
+ */
 class Documento
 {
     public function __construct(
@@ -21,6 +25,7 @@ class Documento
     ) {
     }
 
+    /** Hidrata la entidad desde una fila de base de datos (incluye el JOIN a tipos_documento). */
     public static function fromRow(array $row): self
     {
         return new self(
@@ -38,6 +43,7 @@ class Documento
         );
     }
 
+    /** Representación pública de la entidad; omite archivo_hash. */
     public function toArray(): array
     {
         return [

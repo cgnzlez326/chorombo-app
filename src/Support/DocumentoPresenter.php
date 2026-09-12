@@ -6,8 +6,13 @@ namespace App\Support;
 
 use App\Models\Documento;
 
+/**
+ * Da formato de salida a un Documento para el Frontend, agregando la URL de descarga
+ * del archivo sin exponer detalles internos de almacenamiento.
+ */
 final class DocumentoPresenter
 {
+    /** Convierte el documento a array y agrega `archivo_url` (o null si no tiene archivo). */
     public static function toArray(Documento $documento): array
     {
         $data = $documento->toArray();

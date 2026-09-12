@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+/**
+ * Configuración central de la API: base de datos, paginación, rate limit, CORS y subidas.
+ * Todos los valores se leen en src/bootstrap.php.
+ */
 return [
     'db' => [
         'host'    => '127.0.0.1',

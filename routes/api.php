@@ -5,7 +5,11 @@ declare(strict_types=1);
 use App\Core\Request;
 use App\Core\Router;
 
-/** @var array{router: Router, request: Request, controllers: array} $app */
+/**
+ * Definición de rutas de la API. Los handlers solo delegan en los controladores ya cableados.
+ *
+ * @var array{router: Router, request: Request, controllers: array} $app
+ */
 $router = $app['router'];
 $documentoController = $app['controllers']['documento'];
 $tipoDocumentoController = $app['controllers']['tipoDocumento'];

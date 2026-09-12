@@ -7,10 +7,15 @@ namespace App\Core;
 use App\Exceptions\ValidationException;
 use DateTimeImmutable;
 
+/**
+ * Validador declarativo basado en reglas (required, string, integer, date, max:n, in:a,b).
+ * Acumula todos los errores y, si hay alguno, lanza ValidationException con el detalle por campo.
+ */
 class Validator implements ValidatorInterface
 {
     private array $errors = [];
 
+    /** Valida $data contra $rules y devuelve solo los campos presentes y limpios (trim incluido). */
     public function validate(array $data, array $rules): array
     {
         $this->errors = [];
@@ -41,6 +46,7 @@ class Validator implements ValidatorInterface
         return $clean;
     }
 
+    /** Aplica cada restricción del campo; puede normalizar el valor (ej. castear a int). */
     private function apply(string $field, mixed &$value, array $constraints): bool
     {
         $valid = true;
@@ -95,6 +101,7 @@ class Validator implements ValidatorInterface
         return $valid;
     }
 
+    /** Verifica que la fecha sea real y esté en formato estricto YYYY-MM-DD. */
     private static function isValidDate(string $value): bool
     {
         $date = DateTimeImmutable::createFromFormat('Y-m-d', $value);

@@ -10,6 +10,10 @@ use App\Exceptions\ValidationException;
 use App\Services\DocumentoService;
 use App\Support\DocumentoPresenter;
 
+/**
+ * Controlador delgado de documentos: valida la paginación, delega en DocumentoService
+ * y presenta la respuesta con DocumentoPresenter. No accede a base de datos.
+ */
 class DocumentoController
 {
     public function __construct(
@@ -19,6 +23,7 @@ class DocumentoController
     ) {
     }
 
+    /** GET /api/documentos: lista paginada con filtro opcional por tipo_documento_id. */
     public function index(Request $request): void
     {
         $page = $this->queryInt($request, 'page', 1);
@@ -44,11 +49,13 @@ class DocumentoController
         );
     }
 
+    /** GET /api/documentos/{id}: detalle de un documento. */
     public function show(Request $request, array $params): void
     {
         Response::success(DocumentoPresenter::toArray($this->service->get((int) $params['id'])));
     }
 
+    /** POST /api/documentos: crea un documento (multipart/form-data). */
     public function store(Request $request): void
     {
         $documento = $this->service->create($request->body, $request->file('archivo'));
@@ -56,6 +63,7 @@ class DocumentoController
         Response::success(DocumentoPresenter::toArray($documento), 'Documento creado correctamente.', 201);
     }
 
+    /** PUT/PATCH /api/documentos/{id}: actualiza parcial o totalmente un documento. */
     public function update(Request $request, array $params): void
     {
         $documento = $this->service->update(
@@ -67,6 +75,7 @@ class DocumentoController
         Response::success(DocumentoPresenter::toArray($documento), 'Documento actualizado correctamente.');
     }
 
+    /** DELETE /api/documentos/{id}: elimina un documento y su archivo. */
     public function destroy(Request $request, array $params): void
     {
         $this->service->delete((int) $params['id']);
@@ -74,6 +83,7 @@ class DocumentoController
         Response::success(null, 'Documento eliminado correctamente.');
     }
 
+    /** GET /api/documentos/{id}/archivo: descarga el archivo asociado. */
     public function download(Request $request, array $params): void
     {
         $file = $this->service->file((int) $params['id']);
@@ -81,6 +91,7 @@ class DocumentoController
         Response::file($file['path'], $file['name']);
     }
 
+    /** Lee un parámetro de query como entero validado, o el valor por defecto. */
     private function queryInt(Request $request, string $key, int $default): int
     {
         $value = $request->query[$key] ?? null;
@@ -96,6 +107,7 @@ class DocumentoController
         return (int) $value;
     }
 
+    /** Lee el filtro tipo_documento_id como entero validado, o null si no viene. */
     private function tipoDocumentoFilter(Request $request): ?int
     {
         $value = $request->query['tipo_documento_id'] ?? null;
