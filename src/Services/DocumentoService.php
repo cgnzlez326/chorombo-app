@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Core\FileStorage;
 use App\Core\Validator;
+use App\Exceptions\DuplicateException;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\ValidationException;
 use App\Models\Documento;
@@ -53,21 +54,30 @@ class DocumentoService
 
         $archivo = null;
         $archivoNombre = null;
+        $archivoHash = null;
 
         if ($file !== null) {
             $stored = $this->fileStorage->store($file);
+            $this->assertArchivoNoDuplicado($stored);
             $archivo = $stored['filename'];
             $archivoNombre = $stored['original_name'];
+            $archivoHash = $stored['hash'];
         }
 
-        $id = $this->repository->create(new Documento(
-            titulo: $validated['titulo'],
-            tipoDocumentoId: (int) $validated['tipo_documento_id'],
-            fecha: $validated['fecha'],
-            descripcion: $validated['descripcion'] ?? null,
-            archivo: $archivo,
-            archivoNombreOriginal: $archivoNombre,
-        ));
+        try {
+            $id = $this->repository->create(new Documento(
+                titulo: $validated['titulo'],
+                tipoDocumentoId: (int) $validated['tipo_documento_id'],
+                fecha: $validated['fecha'],
+                descripcion: $validated['descripcion'] ?? null,
+                archivo: $archivo,
+                archivoNombreOriginal: $archivoNombre,
+                archivoHash: $archivoHash,
+            ));
+        } catch (DuplicateException $exception) {
+            $this->fileStorage->delete($archivo);
+            throw $exception;
+        }
 
         return $this->get($id);
     }
@@ -88,23 +98,37 @@ class DocumentoService
 
         $archivo = $current->archivo;
         $archivoNombre = $current->archivoNombreOriginal;
+        $archivoHash = $current->archivoHash;
+        $nuevoArchivo = null;
 
         if ($file !== null) {
             $stored = $this->fileStorage->store($file);
-            $this->fileStorage->delete($current->archivo);
+            $this->assertArchivoNoDuplicado($stored, $id);
+            $nuevoArchivo = $stored['filename'];
             $archivo = $stored['filename'];
             $archivoNombre = $stored['original_name'];
+            $archivoHash = $stored['hash'];
         }
 
-        $this->repository->update($id, new Documento(
-            id: $id,
-            titulo: $validated['titulo'],
-            tipoDocumentoId: (int) $validated['tipo_documento_id'],
-            fecha: $validated['fecha'],
-            descripcion: $validated['descripcion'] ?? null,
-            archivo: $archivo,
-            archivoNombreOriginal: $archivoNombre,
-        ));
+        try {
+            $this->repository->update($id, new Documento(
+                id: $id,
+                titulo: $validated['titulo'],
+                tipoDocumentoId: (int) $validated['tipo_documento_id'],
+                fecha: $validated['fecha'],
+                descripcion: $validated['descripcion'] ?? null,
+                archivo: $archivo,
+                archivoNombreOriginal: $archivoNombre,
+                archivoHash: $archivoHash,
+            ));
+        } catch (DuplicateException $exception) {
+            $this->fileStorage->delete($nuevoArchivo);
+            throw $exception;
+        }
+
+        if ($nuevoArchivo !== null) {
+            $this->fileStorage->delete($current->archivo);
+        }
 
         return $this->get($id);
     }
@@ -135,6 +159,20 @@ class DocumentoService
     {
         if (!$this->tipoDocumentoRepository->exists($id)) {
             throw new ValidationException(['tipo_documento_id' => ['El tipo de documento indicado no existe.']]);
+        }
+    }
+
+    private function assertArchivoNoDuplicado(array $stored, ?int $excludeId = null): void
+    {
+        $existente = $this->repository->findByArchivoHash($stored['hash'], $excludeId);
+
+        if ($existente !== null) {
+            $this->fileStorage->delete($stored['filename']);
+
+            throw new DuplicateException(details: [
+                'documento_id' => $existente->id,
+                'titulo'       => $existente->titulo,
+            ]);
         }
     }
 }

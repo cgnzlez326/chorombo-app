@@ -32,9 +32,11 @@ CREATE TABLE documentos (
     descripcion             TEXT NULL,
     archivo                 VARCHAR(255) NULL,
     archivo_nombre_original VARCHAR(255) NULL,
+    archivo_hash            CHAR(64) NULL,
     created_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
+    UNIQUE KEY uq_documentos_archivo_hash (archivo_hash),
     KEY idx_documentos_tipo_documento (tipo_documento_id),
     KEY idx_documentos_fecha (fecha),
     CONSTRAINT fk_documentos_tipo_documento

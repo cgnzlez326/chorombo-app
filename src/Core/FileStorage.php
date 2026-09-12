@@ -54,6 +54,12 @@ class FileStorage
 
         $this->ensureDirectory();
 
+        $hash = hash_file('sha256', $file['tmp_name']);
+
+        if ($hash === false) {
+            throw new RuntimeException('No se pudo calcular la huella del archivo.');
+        }
+
         $filename = bin2hex(random_bytes(16)) . '.' . $extension;
         $target = $this->path($filename);
 
@@ -64,6 +70,7 @@ class FileStorage
         return [
             'filename'      => $filename,
             'original_name' => $originalName,
+            'hash'          => $hash,
         ];
     }
 

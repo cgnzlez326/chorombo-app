@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Core\Database;
+use App\Exceptions\DuplicateException;
 use App\Models\Documento;
 use PDO;
+use PDOException;
 use PDOStatement;
 
 class DocumentoRepository implements DocumentoRepositoryInterface
 {
     private const SELECT = <<<SQL
         SELECT d.id, d.titulo, d.tipo_documento_id, d.fecha, d.descripcion,
-               d.archivo, d.archivo_nombre_original, d.created_at, d.updated_at,
+               d.archivo, d.archivo_nombre_original, d.archivo_hash,
+               d.created_at, d.updated_at,
                t.nombre AS tipo_documento
         FROM documentos d
         INNER JOIN tipos_documento t ON t.id = d.tipo_documento_id
@@ -57,15 +60,36 @@ class DocumentoRepository implements DocumentoRepositoryInterface
         return $row === false ? null : Documento::fromRow($row);
     }
 
+    public function findByArchivoHash(string $hash, ?int $excludeId = null): ?Documento
+    {
+        $sql = self::SELECT . ' WHERE d.archivo_hash = :hash';
+
+        if ($excludeId !== null) {
+            $sql .= ' AND d.id <> :exclude_id';
+        }
+
+        $statement = $this->connection()->prepare($sql);
+        $statement->bindValue(':hash', $hash);
+
+        if ($excludeId !== null) {
+            $statement->bindValue(':exclude_id', $excludeId, PDO::PARAM_INT);
+        }
+
+        $statement->execute();
+        $row = $statement->fetch();
+
+        return $row === false ? null : Documento::fromRow($row);
+    }
+
     public function create(Documento $documento): int
     {
         $statement = $this->connection()->prepare(
-            'INSERT INTO documentos (titulo, tipo_documento_id, fecha, descripcion, archivo, archivo_nombre_original)
-             VALUES (:titulo, :tipo_documento_id, :fecha, :descripcion, :archivo, :archivo_nombre_original)'
+            'INSERT INTO documentos (titulo, tipo_documento_id, fecha, descripcion, archivo, archivo_nombre_original, archivo_hash)
+             VALUES (:titulo, :tipo_documento_id, :fecha, :descripcion, :archivo, :archivo_nombre_original, :archivo_hash)'
         );
 
         $this->bindDocumento($statement, $documento);
-        $statement->execute();
+        $this->execute($statement);
 
         return (int) $this->connection()->lastInsertId();
     }
@@ -79,13 +103,14 @@ class DocumentoRepository implements DocumentoRepositoryInterface
                  fecha = :fecha,
                  descripcion = :descripcion,
                  archivo = :archivo,
-                 archivo_nombre_original = :archivo_nombre_original
+                 archivo_nombre_original = :archivo_nombre_original,
+                 archivo_hash = :archivo_hash
              WHERE id = :id'
         );
 
         $this->bindDocumento($statement, $documento);
         $statement->bindValue(':id', $id, PDO::PARAM_INT);
-        $statement->execute();
+        $this->execute($statement);
     }
 
     public function delete(int $id): void
@@ -107,6 +132,26 @@ class DocumentoRepository implements DocumentoRepositoryInterface
             $documento->archivoNombreOriginal,
             $this->paramType($documento->archivoNombreOriginal),
         );
+        $statement->bindValue(':archivo_hash', $documento->archivoHash, $this->paramType($documento->archivoHash));
+    }
+
+    private function execute(PDOStatement $statement): void
+    {
+        try {
+            $statement->execute();
+        } catch (PDOException $exception) {
+            if ($this->isDuplicateKey($exception)) {
+                throw new DuplicateException();
+            }
+
+            throw $exception;
+        }
+    }
+
+    private function isDuplicateKey(PDOException $exception): bool
+    {
+        return ($exception->errorInfo[0] ?? $exception->getCode()) === '23000'
+            && (int) ($exception->errorInfo[1] ?? 0) === 1062;
     }
 
     private function paramType(?string $value): int
