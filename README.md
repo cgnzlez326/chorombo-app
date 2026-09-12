@@ -74,7 +74,7 @@ Reunión comunal, Permiso administrativo.
 { "success": false, "error": { "code": "VALIDATION_ERROR", "message": "…", "details": { } } }
 ```
 
-Códigos HTTP: `200`, `201`, `204` (preflight), `404`, `405`, `422`, `500`.
+Códigos HTTP: `200`, `201`, `204` (preflight), `404`, `405`, `409`, `413`, `422`, `500`.
 
 ## Validaciones
 
@@ -84,7 +84,8 @@ Códigos HTTP: `200`, `201`, `204` (preflight), `404`, `405`, `422`, `500`.
 - `descripcion`: opcional, texto, máximo 2000 caracteres.
 - `archivo`: opcional; extensiones `pdf, doc, docx, xls, xlsx, png, jpg, jpeg`, máximo 5 MB,
   con verificación del contenido real (MIME). Se guarda con nombre único en `storage/uploads/`
-  y se elimina al borrar el documento.
+  y se elimina al borrar el documento. El cuerpo completo de la solicitud (incluido en
+  `PUT`/`PATCH`) está limitado a 6 MB; si se supera, responde `413`.
 
 ## Pruebas
 

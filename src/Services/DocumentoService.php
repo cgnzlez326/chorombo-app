@@ -79,7 +79,7 @@ class DocumentoService
             )));
         } catch (Throwable $exception) {
             if ($stored !== null) {
-                $this->fileStorage->delete($stored['filename']);
+                $this->safeDelete($stored['filename']);
             }
 
             throw $exception;
@@ -130,14 +130,14 @@ class DocumentoService
             });
         } catch (Throwable $exception) {
             if ($stored !== null) {
-                $this->fileStorage->delete($stored['filename']);
+                $this->safeDelete($stored['filename']);
             }
 
             throw $exception;
         }
 
         if ($stored !== null) {
-            $this->fileStorage->delete($current->archivo);
+            $this->safeDelete($current->archivo);
         }
 
         return $this->get($id);
@@ -151,15 +151,7 @@ class DocumentoService
             $this->repository->delete($id);
         });
 
-        try {
-            $this->fileStorage->delete($documento->archivo);
-        } catch (Throwable $exception) {
-            error_log(sprintf(
-                '[chorombo-api] No se pudo eliminar el archivo %s: %s',
-                (string) $documento->archivo,
-                $exception->getMessage(),
-            ));
-        }
+        $this->safeDelete($documento->archivo);
     }
 
     public function file(int $id): array
@@ -188,12 +180,25 @@ class DocumentoService
         $existente = $this->repository->findByArchivoHash($stored['hash'], $excludeId);
 
         if ($existente !== null) {
-            $this->fileStorage->delete($stored['filename']);
+            $this->safeDelete($stored['filename']);
 
             throw new DuplicateException(details: [
                 'documento_id' => $existente->id,
                 'titulo'       => $existente->titulo,
             ]);
+        }
+    }
+
+    private function safeDelete(?string $filename): void
+    {
+        try {
+            $this->fileStorage->delete($filename);
+        } catch (Throwable $exception) {
+            error_log(sprintf(
+                '[chorombo-api] No se pudo eliminar el archivo %s: %s',
+                (string) $filename,
+                $exception->getMessage(),
+            ));
         }
     }
 }

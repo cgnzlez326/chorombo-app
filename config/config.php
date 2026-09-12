@@ -27,6 +27,7 @@ return [
     'uploads' => [
         'directory'          => __DIR__ . '/../storage/uploads',
         'max_size'           => 5 * 1024 * 1024,
+        'max_request_size'   => 6 * 1024 * 1024,
         'allowed_extensions' => ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg'],
     ],
 ];
