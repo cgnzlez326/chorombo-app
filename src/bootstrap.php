@@ -18,6 +18,11 @@ use App\Repositories\TipoDocumentoRepository;
 use App\Services\DocumentoService;
 use App\Services\TipoDocumentoService;
 
+/**
+ * Arranque de la aplicación y wiring de dependencias.
+ * Crea repositorios, servicios y controladores (inyectando interfaces), aplica CORS,
+ * ejecuta el rate limit según el método HTTP y devuelve el router listo para despachar.
+ */
 require __DIR__ . '/autoload.php';
 
 $config = require __DIR__ . '/../config/config.php';
@@ -35,6 +40,8 @@ $fileStorage = new FileStorage(
     $config['uploads']['allowed_extensions'],
 );
 
+// Los controladores reciben sus dependencias ya construidas: los servicios dependen de
+// interfaces (DIP) y la base de datos implementa tanto PDO como el gestor de transacciones.
 $controllers = [
     'documento'     => new DocumentoController(
         new DocumentoService(
@@ -52,6 +59,7 @@ $controllers = [
 
 $request = Request::capture($config['uploads']['max_request_size']);
 
+// El rate limit se aplica antes del router, con límites distintos para lectura y escritura.
 if ($config['rate_limit']['enabled']) {
     $rateLimit = $config['rate_limit'];
     $isWrite = in_array($request->method, ['POST', 'PUT', 'PATCH', 'DELETE'], true);

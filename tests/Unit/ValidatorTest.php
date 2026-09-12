@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Core\Validator;
 use App\Exceptions\ValidationException;
 
+/** Pruebas del Validator: normalización de tipos, campos obligatorios, fechas y longitud máxima. */
+
 test('Validator acepta datos válidos y normaliza', function (): void {
     $validator = new Validator();
 

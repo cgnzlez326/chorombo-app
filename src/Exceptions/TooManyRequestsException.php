@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+/** Error 429 del rate limiter; incluye los segundos para el encabezado Retry-After. */
 class TooManyRequestsException extends HttpException
 {
     public function __construct(private readonly int $retryAfter)

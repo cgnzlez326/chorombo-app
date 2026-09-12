@@ -15,6 +15,11 @@ use App\Repositories\DocumentoRepositoryInterface;
 use App\Repositories\TipoDocumentoRepositoryInterface;
 use Throwable;
 
+/**
+ * Lógica de negocio de documentos: valida, verifica el tipo, guarda el archivo y coordina
+ * la transacción de base de datos. Si algo falla, elimina el archivo recién almacenado para
+ * no dejar huérfanos; al actualizar o borrar, limpia el archivo anterior.
+ */
 class DocumentoService
 {
     private const RULES = [
@@ -33,7 +38,11 @@ class DocumentoService
     ) {
     }
 
-    /** @return array{items: Documento[], total: int, page: int, per_page: int} */
+    /**
+     * Devuelve una página de documentos junto con el total para la paginación.
+     *
+     * @return array{items: Documento[], total: int, page: int, per_page: int}
+     */
     public function list(?int $tipoDocumentoId, int $page, int $perPage): array
     {
         return [
@@ -44,6 +53,7 @@ class DocumentoService
         ];
     }
 
+    /** Obtiene un documento o lanza NotFoundException. */
     public function get(int $id): Documento
     {
         $documento = $this->repository->find($id);
@@ -55,6 +65,7 @@ class DocumentoService
         return $documento;
     }
 
+    /** Valida, almacena el archivo (si viene) y persiste el nuevo documento. */
     public function create(array $data, ?array $file): Documento
     {
         $validated = $this->validator->validate($data, self::RULES);
@@ -88,6 +99,7 @@ class DocumentoService
         return $this->get($id);
     }
 
+    /** Actualiza fusionando los campos enviados con los actuales; reemplaza el archivo si llega uno nuevo. */
     public function update(int $id, array $data, ?array $file): Documento
     {
         $current = $this->get($id);
@@ -143,6 +155,7 @@ class DocumentoService
         return $this->get($id);
     }
 
+    /** Elimina el documento y, después de confirmar la transacción, su archivo. */
     public function delete(int $id): void
     {
         $documento = $this->get($id);
@@ -154,6 +167,7 @@ class DocumentoService
         $this->safeDelete($documento->archivo);
     }
 
+    /** Devuelve ruta física y nombre original del archivo asociado al documento. */
     public function file(int $id): array
     {
         $documento = $this->get($id);
@@ -168,6 +182,7 @@ class DocumentoService
         ];
     }
 
+    /** Comprueba que el tipo de documento referenciado exista. */
     private function assertTipoDocumento(int $id): void
     {
         if (!$this->tipoDocumentoRepository->exists($id)) {
@@ -175,6 +190,7 @@ class DocumentoService
         }
     }
 
+    /** Si el hash ya existe, borra el archivo recién guardado y lanza DuplicateException con el id existente. */
     private function assertArchivoNoDuplicado(array $stored, ?int $excludeId = null): void
     {
         $existente = $this->repository->findByArchivoHash($stored['hash'], $excludeId);
@@ -189,6 +205,7 @@ class DocumentoService
         }
     }
 
+    /** Elimina un archivo sin interrumpir el flujo si falla; registra el problema en el log. */
     private function safeDelete(?string $filename): void
     {
         try {

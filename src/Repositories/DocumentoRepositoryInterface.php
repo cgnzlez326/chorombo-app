@@ -6,6 +6,7 @@ namespace App\Repositories;
 
 use App\Models\Documento;
 
+/** Contrato de persistencia de documentos (DIP: los servicios dependen de esta interfaz). */
 interface DocumentoRepositoryInterface
 {
     /** @return Documento[] */

@@ -9,10 +9,15 @@ use App\Exceptions\TooManyRequestsException;
 use ErrorException;
 use Throwable;
 
+/**
+ * Centraliza el manejo de errores: convierte errores PHP en excepciones, responde
+ * HttpException con su código/mensaje y todo lo demás como 500, además de registrar en el log.
+ */
 class ErrorHandler
 {
     private const FATAL_ERRORS = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR];
 
+    /** Registra los handlers de errores, excepciones no capturadas y errores fatales. */
     public static function register(): void
     {
         ini_set('display_errors', '0');
@@ -60,6 +65,7 @@ class ErrorHandler
         });
     }
 
+    /** Escribe la excepción en el log de PHP sin exponer detalles al cliente. */
     private static function log(Throwable $exception): void
     {
         error_log(sprintf(

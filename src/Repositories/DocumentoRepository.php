@@ -11,6 +11,10 @@ use PDO;
 use PDOException;
 use PDOStatement;
 
+/**
+ * Acceso a datos de documentos mediante PDO y sentencias preparadas.
+ * Traduce la violación del índice único de archivo_hash a DuplicateException.
+ */
 class DocumentoRepository implements DocumentoRepositoryInterface
 {
     private const SELECT = <<<SQL
@@ -26,6 +30,7 @@ class DocumentoRepository implements DocumentoRepositoryInterface
     {
     }
 
+    /** Devuelve una página de documentos ordenados por fecha descendente. */
     public function paginate(?int $tipoDocumentoId, int $limit, int $offset): array
     {
         $sql = self::SELECT;
@@ -51,6 +56,7 @@ class DocumentoRepository implements DocumentoRepositoryInterface
         return array_map([Documento::class, 'fromRow'], $statement->fetchAll());
     }
 
+    /** Cuenta documentos, opcionalmente filtrando por tipo. */
     public function count(?int $tipoDocumentoId = null): int
     {
         $sql = 'SELECT COUNT(*) FROM documentos d';
@@ -72,6 +78,7 @@ class DocumentoRepository implements DocumentoRepositoryInterface
         return (int) $statement->fetchColumn();
     }
 
+    /** Busca un documento por id o devuelve null. */
     public function find(int $id): ?Documento
     {
         $statement = $this->connection()->prepare(self::SELECT . ' WHERE d.id = :id');
@@ -83,6 +90,7 @@ class DocumentoRepository implements DocumentoRepositoryInterface
         return $row === false ? null : Documento::fromRow($row);
     }
 
+    /** Busca otro documento con el mismo hash de archivo, excluyendo $excludeId al actualizar. */
     public function findByArchivoHash(string $hash, ?int $excludeId = null): ?Documento
     {
         $sql = self::SELECT . ' WHERE d.archivo_hash = :hash';
@@ -104,6 +112,7 @@ class DocumentoRepository implements DocumentoRepositoryInterface
         return $row === false ? null : Documento::fromRow($row);
     }
 
+    /** Inserta el documento y devuelve el id generado. */
     public function create(Documento $documento): int
     {
         $statement = $this->connection()->prepare(
@@ -117,6 +126,7 @@ class DocumentoRepository implements DocumentoRepositoryInterface
         return (int) $this->connection()->lastInsertId();
     }
 
+    /** Actualiza todos los campos mutables del documento. */
     public function update(int $id, Documento $documento): void
     {
         $statement = $this->connection()->prepare(
@@ -136,6 +146,7 @@ class DocumentoRepository implements DocumentoRepositoryInterface
         $this->execute($statement);
     }
 
+    /** Elimina el documento por id. */
     public function delete(int $id): void
     {
         $statement = $this->connection()->prepare('DELETE FROM documentos WHERE id = :id');
@@ -143,6 +154,7 @@ class DocumentoRepository implements DocumentoRepositoryInterface
         $statement->execute();
     }
 
+    /** Enlaza los campos de la entidad a los parámetros de la sentencia. */
     private function bindDocumento(PDOStatement $statement, Documento $documento): void
     {
         $statement->bindValue(':titulo', $documento->titulo);
@@ -158,6 +170,7 @@ class DocumentoRepository implements DocumentoRepositoryInterface
         $statement->bindValue(':archivo_hash', $documento->archivoHash, $this->paramType($documento->archivoHash));
     }
 
+    /** Ejecuta la sentencia convirtiendo el error de clave duplicada en DuplicateException. */
     private function execute(PDOStatement $statement): void
     {
         try {
@@ -171,17 +184,20 @@ class DocumentoRepository implements DocumentoRepositoryInterface
         }
     }
 
+    /** Detecta el error MySQL 1062 (entrada duplicada). */
     private function isDuplicateKey(PDOException $exception): bool
     {
         return ($exception->errorInfo[0] ?? $exception->getCode()) === '23000'
             && (int) ($exception->errorInfo[1] ?? 0) === 1062;
     }
 
+    /** Tipo de parámetro PDO según si el valor es nulo o texto. */
     private function paramType(?string $value): int
     {
         return $value === null ? PDO::PARAM_NULL : PDO::PARAM_STR;
     }
 
+    /** Conexión PDO compartida. */
     private function connection(): PDO
     {
         return $this->database->connection();

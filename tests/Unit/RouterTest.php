@@ -7,6 +7,12 @@ use App\Core\Router;
 use App\Exceptions\HttpException;
 use App\Exceptions\NotFoundException;
 
+/**
+ * Pruebas del Router: extracción de parámetros de ruta, 404 en ruta desconocida
+ * y 405 cuando el método HTTP no coincide.
+ */
+
+/** Simula las superglobales y construye un Request para despachar en el router. */
 function fakeRequest(string $method, string $uri): Request
 {
     $_SERVER['REQUEST_METHOD'] = $method;

@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+/**
+ * Aplica las cabeceras CORS y responde los preflight OPTIONS con 204.
+ */
 class Cors
 {
+    /** Configura las cabeceras según `config['cors']` y corta la ejecución en OPTIONS. */
     public static function apply(array $config): void
     {
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
