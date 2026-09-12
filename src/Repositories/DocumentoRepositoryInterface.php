@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Repositories;
+
+use App\Models\Documento;
+
+interface DocumentoRepositoryInterface
+{
+    /** @return Documento[] */
+    public function all(?int $tipoDocumentoId = null): array;
+
+    public function find(int $id): ?Documento;
+
+    public function create(Documento $documento): int;
+
+    public function update(int $id, Documento $documento): void;
+
+    public function delete(int $id): void;
+}

@@ -1,0 +1,353 @@
+openapi: 3.0.3
+
+info:
+  title: API Gestor Documental - Escuela Básica G-733 Chorombo Bajo
+  description: |
+    Backend para administrar documentos institucionales (memos, oficios,
+    citaciones, acuerdos, reuniones comunales y permisos administrativos).
+    Construido en PHP puro con arquitectura MVC sobre MySQL.
+  version: 1.0.0
+
+servers:
+  - url: .
+    description: Servidor actual (relativo a la ubicación de este documento)
+
+tags:
+  - name: Documentos
+  - name: Tipos de documento
+
+paths:
+  /api/documentos:
+    get:
+      tags: [Documentos]
+      summary: Lista los documentos registrados
+      parameters:
+        - name: tipo_documento_id
+          in: query
+          required: false
+          description: Filtra por tipo de documento.
+          schema:
+            type: integer
+            example: 2
+      responses:
+        '200':
+          description: Listado de documentos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentoCollection'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    post:
+      tags: [Documentos]
+      summary: Crea un documento
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentoInput'
+      responses:
+        '201':
+          description: Documento creado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentoResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/documentos/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          example: 1
+
+    get:
+      tags: [Documentos]
+      summary: Obtiene un documento por su identificador
+      responses:
+        '200':
+          description: Documento encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentoResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Documentos]
+      summary: Actualiza un documento (reemplaza los campos enviados)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentoInput'
+      responses:
+        '200':
+          description: Documento actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentoResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    patch:
+      tags: [Documentos]
+      summary: Actualiza parcialmente un documento
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentoInput'
+      responses:
+        '200':
+          description: Documento actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentoResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      tags: [Documentos]
+      summary: Elimina un documento y su archivo asociado
+      responses:
+        '200':
+          description: Documento eliminado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/documentos/{id}/archivo:
+    get:
+      tags: [Documentos]
+      summary: Descarga el archivo asociado al documento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Archivo binario.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/tipos-documento:
+    get:
+      tags: [Tipos de documento]
+      summary: Lista los tipos de documento disponibles
+      responses:
+        '200':
+          description: Listado de tipos de documento.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TipoDocumentoCollection'
+
+components:
+  schemas:
+    DocumentoInput:
+      type: object
+      required:
+        - titulo
+        - tipo_documento_id
+        - fecha
+      properties:
+        titulo:
+          type: string
+          maxLength: 255
+          example: Acta reunión de apoderados
+        tipo_documento_id:
+          type: integer
+          example: 4
+        fecha:
+          type: string
+          format: date
+          example: '2026-09-10'
+        descripcion:
+          type: string
+          maxLength: 2000
+          example: Acuerdos tratados en la reunión.
+        archivo:
+          type: string
+          format: binary
+          description: Archivo opcional (pdf, doc, docx, xls, xlsx, png, jpg, jpeg). Máximo 5 MB.
+
+    Documento:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        titulo:
+          type: string
+          example: Acta reunión de apoderados
+        tipo_documento_id:
+          type: integer
+          example: 4
+        tipo_documento:
+          type: string
+          example: Acuerdo de apoderados
+        fecha:
+          type: string
+          format: date
+          example: '2026-09-10'
+        descripcion:
+          type: string
+          nullable: true
+        archivo:
+          type: string
+          nullable: true
+          description: Nombre interno del archivo almacenado.
+        archivo_nombre_original:
+          type: string
+          nullable: true
+          description: Nombre original del archivo subido.
+        archivo_url:
+          type: string
+          nullable: true
+          example: /api/documentos/1/archivo
+        created_at:
+          type: string
+          example: '2026-09-10 15:30:00'
+        updated_at:
+          type: string
+          example: '2026-09-10 15:30:00'
+
+    TipoDocumento:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 2
+        nombre:
+          type: string
+          example: Oficio
+
+    DocumentoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Documento'
+        message:
+          type: string
+          example: Documento creado correctamente.
+
+    DocumentoCollection:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Documento'
+        total:
+          type: integer
+          example: 1
+
+    TipoDocumentoCollection:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TipoDocumento'
+        total:
+          type: integer
+          example: 6
+
+    Success:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          nullable: true
+          example: null
+        message:
+          type: string
+          example: Documento eliminado correctamente.
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: Los datos enviados no son válidos.
+            details:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+
+  responses:
+    NotFound:
+      description: Recurso no encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: NOT_FOUND
+              message: El documento solicitado no existe.
+
+    ValidationError:
+      description: Datos inválidos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: VALIDATION_ERROR
+              message: Los datos enviados no son válidos.
+              details:
+                fecha:
+                  - El campo es obligatorio.

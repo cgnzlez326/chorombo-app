@@ -1,0 +1,403 @@
+{
+  "info": {
+    "name": "Gestor Documental Chorombo - API",
+    "description": "Colección de pruebas del CRUD de documentos y tipos de documento. Ejecutar con el servidor Apache de XAMPP activo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/chorombo-app"
+    },
+    {
+      "key": "documentoId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Tipos de documento",
+      "item": [
+        {
+          "name": "Listar tipos de documento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Devuelve el catálogo de tipos', () => pm.expect(body.data).to.be.an('array').with.lengthOf.at.least(6));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/tipos-documento"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documentos - flujo CRUD",
+      "item": [
+        {
+          "name": "Crear documento (con archivo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Devuelve el documento creado', () => {",
+                  "  pm.expect(body.success).to.be.true;",
+                  "  pm.expect(body.data.id).to.be.a('number');",
+                  "  pm.expect(body.data.archivo).to.not.be.null;",
+                  "});",
+                  "pm.collectionVariables.set('documentoId', body.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "titulo", "value": "Acta de prueba", "type": "text" },
+                { "key": "tipo_documento_id", "value": "4", "type": "text" },
+                { "key": "fecha", "value": "2026-09-10", "type": "text" },
+                { "key": "descripcion", "value": "Documento creado desde Postman", "type": "text" },
+                { "key": "archivo", "type": "file", "src": "tests/fixtures/documento-prueba.pdf" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/documentos"
+          }
+        },
+        {
+          "name": "Listar documentos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Devuelve una colección', () => pm.expect(body.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documentos"
+          }
+        },
+        {
+          "name": "Listar documentos filtrando por tipo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Todos son del tipo solicitado', () => {",
+                  "  body.data.forEach(d => pm.expect(d.tipo_documento_id).to.eql(4));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documentos?tipo_documento_id=4"
+          }
+        },
+        {
+          "name": "Obtener documento por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Corresponde al id solicitado', () => pm.expect(body.data.id).to.eql(Number(pm.collectionVariables.get('documentoId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documentos/{{documentoId}}"
+          }
+        },
+        {
+          "name": "Actualizar documento (PUT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Título actualizado', () => pm.expect(body.data.titulo).to.eql('Acta de prueba editada'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "titulo", "value": "Acta de prueba editada", "type": "text" },
+                { "key": "tipo_documento_id", "value": "4", "type": "text" },
+                { "key": "fecha", "value": "2026-09-11", "type": "text" },
+                { "key": "descripcion", "value": "Descripción actualizada", "type": "text" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/documentos/{{documentoId}}"
+          }
+        },
+        {
+          "name": "Actualizar parcialmente (PATCH)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Conserva los demás campos', () => {",
+                  "  pm.expect(body.data.titulo).to.eql('Acta de prueba editada');",
+                  "  pm.expect(body.data.fecha).to.eql('2026-09-11');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "descripcion", "value": "Solo se cambia la descripción", "type": "text" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/documentos/{{documentoId}}"
+          }
+        },
+        {
+          "name": "Descargar archivo asociado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Se descarga como adjunto', () => pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documentos/{{documentoId}}/archivo"
+          }
+        },
+        {
+          "name": "Eliminar documento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/documentos/{{documentoId}}"
+          }
+        },
+        {
+          "name": "Consultar documento eliminado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Código NOT_FOUND', () => pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documentos/{{documentoId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documentos - casos inválidos",
+      "item": [
+        {
+          "name": "Crear sin campos obligatorios (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('Informa los campos faltantes', () => {",
+                  "  pm.expect(body.error.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(body.error.details).to.have.property('fecha');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "titulo", "value": "Documento incompleto", "type": "text" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/documentos"
+          }
+        },
+        {
+          "name": "Crear con tipo inexistente (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('Indica el tipo inválido', () => pm.expect(body.error.details).to.have.property('tipo_documento_id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "titulo", "value": "Tipo inválido", "type": "text" },
+                { "key": "tipo_documento_id", "value": "999", "type": "text" },
+                { "key": "fecha", "value": "2026-09-10", "type": "text" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/documentos"
+          }
+        },
+        {
+          "name": "Crear con fecha inválida (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('Indica la fecha inválida', () => pm.expect(body.error.details).to.have.property('fecha'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "titulo", "value": "Fecha mala", "type": "text" },
+                { "key": "tipo_documento_id", "value": "1", "type": "text" },
+                { "key": "fecha", "value": "10-09-2026", "type": "text" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/documentos"
+          }
+        },
+        {
+          "name": "Consultar id inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Código NOT_FOUND', () => pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documentos/999999"
+          }
+        },
+        {
+          "name": "Método no permitido (405)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 405', () => pm.response.to.have.status(405));",
+                  "pm.test('Código METHOD_NOT_ALLOWED', () => pm.expect(pm.response.json().error.code).to.eql('METHOD_NOT_ALLOWED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/tipos-documento"
+          }
+        }
+      ]
+    }
+  ]
+}

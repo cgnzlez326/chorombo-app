@@ -1,0 +1,12 @@
+# Entorno
+/.env
+/config/config.local.php
+
+# Archivos subidos
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log

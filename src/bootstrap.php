@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Controllers\DocumentoController;
+use App\Controllers\TipoDocumentoController;
+use App\Core\Cors;
+use App\Core\Database;
+use App\Core\ErrorHandler;
+use App\Core\FileStorage;
+use App\Core\Request;
+use App\Core\Router;
+use App\Core\Validator;
+use App\Repositories\DocumentoRepository;
+use App\Repositories\TipoDocumentoRepository;
+use App\Services\DocumentoService;
+use App\Services\TipoDocumentoService;
+
+require __DIR__ . '/autoload.php';
+
+$config = require __DIR__ . '/../config/config.php';
+
+ErrorHandler::register();
+Cors::apply($config['cors']);
+
+$database = new Database($config['db']);
+$tipoDocumentoRepository = new TipoDocumentoRepository($database);
+$documentoRepository = new DocumentoRepository($database);
+
+$fileStorage = new FileStorage(
+    $config['uploads']['directory'],
+    $config['uploads']['max_size'],
+    $config['uploads']['allowed_extensions'],
+);
+
+$controllers = [
+    'documento'     => new DocumentoController(new DocumentoService(
+        $documentoRepository,
+        $tipoDocumentoRepository,
+        new Validator(),
+        $fileStorage,
+    )),
+    'tipoDocumento' => new TipoDocumentoController(new TipoDocumentoService($tipoDocumentoRepository)),
+];
+
+return [
+    'router'      => new Router(),
+    'request'     => Request::capture(),
+    'controllers' => $controllers,
+];
