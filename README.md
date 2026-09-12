@@ -50,7 +50,7 @@ tests/             Colección Postman + fixture de prueba
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/api/documentos` | Lista documentos (filtro opcional `?tipo_documento_id=`) |
+| GET | `/api/documentos` | Lista documentos (filtro `?tipo_documento_id=`, paginación `?page=` y `?per_page=`) |
 | GET | `/api/documentos/{id}` | Obtiene un documento |
 | POST | `/api/documentos` | Crea un documento (multipart/form-data) |
 | PUT / PATCH | `/api/documentos/{id}` | Actualiza un documento (multipart/form-data) |
@@ -68,7 +68,7 @@ Reunión comunal, Permiso administrativo.
 { "success": true, "data": { }, "message": "Documento creado correctamente." }
 
 // Listado
-{ "success": true, "data": [ ], "total": 3 }
+{ "success": true, "data": [ ], "total": 42, "page": 1, "per_page": 20, "last_page": 3 }
 
 // Error
 { "success": false, "error": { "code": "VALIDATION_ERROR", "message": "…", "details": { } } }
