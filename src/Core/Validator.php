@@ -7,7 +7,7 @@ namespace App\Core;
 use App\Exceptions\ValidationException;
 use DateTimeImmutable;
 
-class Validator
+class Validator implements ValidatorInterface
 {
     private array $errors = [];
 

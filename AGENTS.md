@@ -43,21 +43,22 @@ public/swagger-ui/    Swagger UI clonado (vendorizado)
 routes/api.php        Definición de rutas
 src/bootstrap.php     Arranque + wiring de dependencias (repos -> services -> controllers)
 src/autoload.php      Autoload PSR-4
-src/Core/             Database, Router, Request, Response, Validator, FileStorage, Cors, ErrorHandler
+src/Core/             Database, Router, Request, Response, Validator, FileStorage, RateLimiter, Cors, ErrorHandler
 src/Controllers/      Controladores delgados
 src/Services/         Validación y lógica de negocio
 src/Repositories/     Interfaces + implementaciones PDO
 src/Models/           Entidades
+src/Support/          Presenters (formato de salida, ej. archivo_url)
 src/Exceptions/       HttpException, NotFoundException, ValidationException
-config/config.php     DB, CORS y subida de archivos
+config/config.php     DB, CORS, paginación, rate limit y subida de archivos
 database/schema.sql   DDL + seed de tipos de documento
 storage/uploads/      Archivos subidos (ignorados por git)
-tests/                Colección Postman + fixtures
+tests/                Runner PHP (tests/run.php) + colección Postman + fixtures
 ```
 
 ## Endpoints
 
-- `GET    /api/documentos` (filtro opcional `?tipo_documento_id=`)
+- `GET    /api/documentos` (filtro `?tipo_documento_id=`, paginación `?page=`/`?per_page=`)
 - `GET    /api/documentos/{id}`
 - `POST   /api/documentos` (multipart/form-data)
 - `PUT    /api/documentos/{id}` / `PATCH /api/documentos/{id}` (multipart/form-data)
@@ -79,7 +80,8 @@ tests/                Colección Postman + fixtures
   - Éxito: `{ "success": true, "data": ... }` (y `"message"` cuando corresponda).
   - Listado: `{ "success": true, "data": [...], "total": n }`.
   - Error: `{ "success": false, "error": { "code", "message", "details"? } }`.
-- Códigos HTTP: 200, 201, 404, 405, 409 (duplicado), 415, 422 (validación), 500.
+- Códigos HTTP: 200, 201, 404, 405, 409 (duplicado), 413 (cuerpo muy grande), 415, 422
+  (validación), 429 (rate limit), 500.
 
 ## Comandos útiles
 
@@ -115,3 +117,9 @@ curl.exe -s http://localhost/chorombo-app/api/tipos-documento
 - La unicidad de documentos se controla con `archivo_hash` (SHA-256) e índice `UNIQUE`, no
   iterando archivos: la verificación es una consulta indexada. El pre-chequeo da el `409` con
   detalle y el índice único cubre la carrera entre requests simultáneos.
+- Los `Services` dependen de interfaces (`ValidatorInterface`, `FileStorageInterface`,
+  `TransactionManagerInterface`) para poder probarse con dobles en memoria sin Composer. El
+  runner de pruebas es `tests/run.php` y los fakes viven en `tests/Support/Fakes.php`.
+- El rate limiting es por IP con ventana fija y almacenamiento en archivos (`flock`), sin
+  Redis ni APCu, y se aplica en `bootstrap.php` antes del router. Límites configurables en
+  `config/config.php` (`rate_limit`).

@@ -429,6 +429,79 @@
           }
         }
       ]
+    },
+    {
+      "name": "Documentos - paginación",
+      "item": [
+        {
+          "name": "Listar paginado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Incluye metadata de paginación', () => {",
+                  "  pm.expect(body).to.have.property('total');",
+                  "  pm.expect(body.page).to.eql(1);",
+                  "  pm.expect(body.per_page).to.eql(1);",
+                  "  pm.expect(body).to.have.property('last_page');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documentos?page=1&per_page=1"
+          }
+        },
+        {
+          "name": "per_page fuera de rango (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('Indica per_page inválido', () => pm.expect(body.error.details).to.have.property('per_page'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documentos?per_page=101"
+          }
+        },
+        {
+          "name": "page no numérico (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('Indica page inválido', () => pm.expect(body.error.details).to.have.property('page'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documentos?page=abc"
+          }
+        }
+      ]
     }
   ]
 }

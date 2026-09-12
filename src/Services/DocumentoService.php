@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Core\Database;
-use App\Core\FileStorage;
-use App\Core\Validator;
+use App\Core\FileStorageInterface;
+use App\Core\TransactionManagerInterface;
+use App\Core\ValidatorInterface;
 use App\Exceptions\DuplicateException;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\ValidationException;
@@ -27,9 +27,9 @@ class DocumentoService
     public function __construct(
         private readonly DocumentoRepositoryInterface $repository,
         private readonly TipoDocumentoRepositoryInterface $tipoDocumentoRepository,
-        private readonly Validator $validator,
-        private readonly FileStorage $fileStorage,
-        private readonly Database $database,
+        private readonly ValidatorInterface $validator,
+        private readonly FileStorageInterface $fileStorage,
+        private readonly TransactionManagerInterface $database,
     ) {
     }
 
