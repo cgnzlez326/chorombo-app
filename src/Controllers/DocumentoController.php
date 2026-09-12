@@ -8,6 +8,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Exceptions\ValidationException;
 use App\Services\DocumentoService;
+use App\Support\DocumentoPresenter;
 
 class DocumentoController
 {
@@ -36,7 +37,7 @@ class DocumentoController
         $result = $this->service->list($this->tipoDocumentoFilter($request), $page, $perPage);
 
         Response::collection(
-            array_map(static fn ($documento) => $documento->toArray(), $result['items']),
+            array_map(static fn ($documento) => DocumentoPresenter::toArray($documento), $result['items']),
             $result['total'],
             $result['page'],
             $result['per_page'],
@@ -45,14 +46,14 @@ class DocumentoController
 
     public function show(Request $request, array $params): void
     {
-        Response::success($this->service->get((int) $params['id'])->toArray());
+        Response::success(DocumentoPresenter::toArray($this->service->get((int) $params['id'])));
     }
 
     public function store(Request $request): void
     {
         $documento = $this->service->create($request->body, $request->file('archivo'));
 
-        Response::success($documento->toArray(), 'Documento creado correctamente.', 201);
+        Response::success(DocumentoPresenter::toArray($documento), 'Documento creado correctamente.', 201);
     }
 
     public function update(Request $request, array $params): void
@@ -63,7 +64,7 @@ class DocumentoController
             $request->file('archivo'),
         );
 
-        Response::success($documento->toArray(), 'Documento actualizado correctamente.');
+        Response::success(DocumentoPresenter::toArray($documento), 'Documento actualizado correctamente.');
     }
 
     public function destroy(Request $request, array $params): void
