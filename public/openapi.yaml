@@ -9,8 +9,8 @@ info:
   version: 1.0.0
 
 servers:
-  - url: .
-    description: Servidor actual (relativo a la ubicación de este documento)
+  - url: http://localhost/chorombo-app
+    description: Servidor local de XAMPP (el .htaccess raíz reescribe hacia public/)
 
 tags:
   - name: Documentos
@@ -53,6 +53,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocumentoCollection'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '422':
           $ref: '#/components/responses/ValidationError'
         '429':
@@ -74,6 +76,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocumentoResponse'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '409':
           $ref: '#/components/responses/Conflict'
         '413':
@@ -104,6 +108,8 @@ paths:
                 $ref: '#/components/schemas/DocumentoResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -131,6 +137,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -142,7 +150,7 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentoInput'
+              $ref: '#/components/schemas/DocumentoInputParcial'
       responses:
         '200':
           description: Documento actualizado.
@@ -158,6 +166,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -173,6 +183,8 @@ paths:
                 $ref: '#/components/schemas/Success'
         '404':
           $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -197,6 +209,8 @@ paths:
                 format: binary
         '404':
           $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -211,6 +225,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TipoDocumentoCollection'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -222,6 +238,30 @@ components:
         - titulo
         - tipo_documento_id
         - fecha
+      properties:
+        titulo:
+          type: string
+          maxLength: 255
+          example: Acta reunión de apoderados
+        tipo_documento_id:
+          type: integer
+          example: 4
+        fecha:
+          type: string
+          format: date
+          example: '2026-09-10'
+        descripcion:
+          type: string
+          maxLength: 2000
+          example: Acuerdos tratados en la reunión.
+        archivo:
+          type: string
+          format: binary
+          description: Archivo opcional (pdf, doc, docx, xls, xlsx, png, jpg, jpeg). Máximo 5 MB.
+
+    DocumentoInputParcial:
+      type: object
+      description: Campos opcionales para actualización parcial (PATCH); solo se modifican los enviados.
       properties:
         titulo:
           type: string
@@ -276,6 +316,7 @@ components:
         archivo_url:
           type: string
           nullable: true
+          description: Ruta de descarga relativa a la base de la API; anteponer el prefijo de la app (ej. /chorombo-app).
           example: /api/documentos/1/archivo
         created_at:
           type: string
@@ -373,10 +414,8 @@ components:
               example: Los datos enviados no son válidos.
             details:
               type: object
-              additionalProperties:
-                type: array
-                items:
-                  type: string
+              description: Estructura variable según el error (mensajes por campo en validación o datos del conflicto).
+              additionalProperties: true
 
   responses:
     NotFound:
@@ -444,3 +483,15 @@ components:
             error:
               code: RATE_LIMITED
               message: Demasiadas solicitudes. Intente nuevamente más tarde.
+
+    MethodNotAllowed:
+      description: Método HTTP no permitido para esta ruta.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: METHOD_NOT_ALLOWED
+              message: Método HTTP no permitido para esta ruta.
