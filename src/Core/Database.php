@@ -9,7 +9,7 @@ use PDOException;
 use RuntimeException;
 use Throwable;
 
-class Database
+class Database implements TransactionManagerInterface
 {
     private ?PDO $connection = null;
 

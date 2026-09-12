@@ -7,7 +7,7 @@ namespace App\Core;
 use App\Exceptions\ValidationException;
 use RuntimeException;
 
-class FileStorage
+class FileStorage implements FileStorageInterface
 {
     private const MIME_TYPES = [
         'pdf'  => ['application/pdf'],
