@@ -90,7 +90,7 @@ Códigos HTTP: `200`, `201`, `204` (preflight), `404`, `405`, `409`, `413`, `422
 ## Límite de solicitudes
 
 La API aplica rate limiting por IP con ventana fija (`config/config.php`, sección
-`rate_limit`): 60 solicitudes por minuto en general y 20 por minuto para operaciones de
+`rate_limit`): 120 solicitudes por minuto en general y 60 por minuto para operaciones de
 escritura (`POST`, `PUT`, `PATCH`, `DELETE`). Al superarlo responde `429` con el header
 `Retry-After`. El estado se guarda en archivos dentro de `storage/cache/ratelimit/`.
 

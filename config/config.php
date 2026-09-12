@@ -21,8 +21,8 @@ return [
         'enabled'            => true,
         'directory'          => __DIR__ . '/../storage/cache/ratelimit',
         'window'             => 60,
-        'max_requests'       => 60,
-        'write_max_requests' => 20,
+        'max_requests'       => 120,
+        'write_max_requests' => 60,
     ],
 
     'cors' => [
