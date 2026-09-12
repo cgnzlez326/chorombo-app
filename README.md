@@ -28,22 +28,26 @@ La configuración (DB, CORS y subida de archivos) está en `config/config.php`.
 - Swagger UI: `http://localhost/chorombo-app/swagger-ui/`
 - OpenAPI: `public/openapi.yaml`
 
+La API se sirve en la raíz del proyecto (`/chorombo-app`): el `.htaccess` raíz reescribe hacia
+`public/`. No incluir `/public` en la URL (usar `http://localhost/chorombo-app/api/documentos`,
+no `.../public/api/documentos`).
+
 ## Estructura
 
 ```
 public/            Front controller, .htaccess, openapi.yaml y swagger-ui/
 routes/api.php     Definición de rutas
 src/bootstrap.php  Arranque y wiring (repos -> services -> controllers)
-src/Core/          Database, Router, Request, Response, Validator, FileStorage, Cors, ErrorHandler
+src/Core/          Database, Router, Request, Response, Validator, FileStorage, RateLimiter, Cors, ErrorHandler e interfaces
 src/Controllers/   Controladores delgados
 src/Services/      Validación y lógica de negocio
 src/Repositories/  Interfaces + implementación PDO
 src/Models/        Entidades (Documento, TipoDocumento)
-src/Exceptions/    HttpException, NotFoundException, ValidationException
+src/Exceptions/    HttpException, NotFoundException, ValidationException, DuplicateException, PayloadTooLargeException, TooManyRequestsException
 config/            Configuración de DB, CORS y uploads
 database/          schema.sql (DDL + seed de tipos de documento)
 storage/uploads/   Archivos subidos (ignorados por git)
-tests/             Colección Postman + fixture de prueba
+tests/             Runner (run.php), pruebas unitarias, fakes, colección Postman y fixture
 ```
 
 ## Endpoints
